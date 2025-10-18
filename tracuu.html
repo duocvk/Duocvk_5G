@@ -1,93 +1,175 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Tra cứu Mã Nhà Trạm</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f3f4f6;
-      margin: 0;
-      padding: 40px;
-      text-align: center;
+<meta charset="UTF-8">
+<title>Tra cứu trạm 5G</title>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<style>
+  #autocomplete-list {
+    border: 1px solid #d4d4d4;
+    max-height: 150px;
+    overflow-y: auto;
+    position: absolute;
+    background: white;
+    z-index: 99;
+  }
+  .autocomplete-item {
+    padding: 5px;
+    cursor: pointer;
+  }
+  .autocomplete-item:hover {
+    background-color: #e9e9e9;
+  }
+</style>
+<script>
+google.charts.load('current', {'packages':['table']});
+google.charts.setOnLoadCallback(drawTable);
+
+let dataTable;
+let suggestions = [];
+
+function drawTable() {
+  const query = new google.visualization.Query(
+    'https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=sheet'
+  );
+  query.send(handleQueryResponse);
+}
+
+function handleQueryResponse(response) {
+  if (response.isError()) {
+    alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+    return;
+  }
+  dataTable = response.getDataTable();
+
+  // Lấy danh sách gợi ý cho autocomplete
+  suggestions = [];
+  for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
+    suggestions.push(dataTable.getValue(r, 0).toString()); // Mã trạm
+    suggestions.push(dataTable.getValue(r, 1).toString()); // Cụm
+    suggestions.push(dataTable.getValue(r, 2).toString()); // Huyện
+  }
+
+  // Vẽ table đầy đủ ban đầu
+  const table = new google.visualization.Table(document.getElementById('table_div'));
+  table.draw(dataTable, {showRowNumber: true, width: '100%', height: '100%'});
+}
+
+// Hàm tìm kiếm
+function search() {
+  if (!dataTable) return;
+  const keyword = document.getElementById('search_input').value.trim().toLowerCase();
+  if (!keyword) {
+    drawTable(); // Hiển thị tất cả nếu bỏ trống
+    return;
+  }
+
+  const filtered = new google.visualization.DataTable();
+  for (let c = 0; c < dataTable.getNumberOfColumns(); c++) {
+    filtered.addColumn(dataTable.getColumnType(c), dataTable.getColumnLabel(c));
+  }
+
+  for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
+    const maTram = dataTable.getValue(r, 0).toString().toLowerCase();
+    const cum = dataTable.getValue(r, 1).toString().toLowerCase();
+    const huyen = dataTable.getValue(r, 2).toString().toLowerCase();
+
+    if (maTram.includes(keyword) || cum.includes(keyword) || huyen.includes(keyword)) {
+      const row = [];
+      for (let c = 0; c < dataTable.getNumberOfColumns(); c++) {
+        row.push(dataTable.getValue(r, c));
+      }
+      filtered.addRow(row);
     }
-    h1 {
-      color: #2563eb;
+  }
+
+  const table = new google.visualization.Table(document.getElementById('table_div'));
+  table.draw(filtered, {showRowNumber: true, width: '100%', height: '100%'});
+}
+
+// Autocomplete
+function autocomplete(inp) {
+  let currentFocus;
+
+  inp.addEventListener("input", function() {
+    const val = this.value.toLowerCase();
+    closeAllLists();
+    if (!val) return false;
+
+    const listDiv = document.createElement("DIV");
+    listDiv.setAttribute("id", "autocomplete-list");
+    this.parentNode.appendChild(listDiv);
+
+    let count = 0;
+    for (let i = 0; i < suggestions.length && count < 10; i++) {
+      if (suggestions[i].toLowerCase().includes(val)) {
+        const itemDiv = document.createElement("DIV");
+        itemDiv.innerHTML = suggestions[i];
+        itemDiv.classList.add("autocomplete-item");
+        itemDiv.addEventListener("click", function() {
+          inp.value = this.innerText;
+          closeAllLists();
+        });
+        listDiv.appendChild(itemDiv);
+        count++;
+      }
     }
-    input {
-      padding: 10px;
-      font-size: 16px;
-      width: 280px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      margin-right: 10px;
+  });
+
+  inp.addEventListener("keydown", function(e) {
+    let x = document.getElementById("autocomplete-list");
+    if (x) x = x.getElementsByTagName("div");
+    if (e.keyCode == 40) { // xuống
+      currentFocus++;
+      addActive(x);
+    } else if (e.keyCode == 38) { // lên
+      currentFocus--;
+      addActive(x);
+    } else if (e.keyCode == 13) { // enter
+      e.preventDefault();
+      if (currentFocus > -1) {
+        if (x) x[currentFocus].click();
+      }
     }
-    button {
-      padding: 10px 16px;
-      font-size: 16px;
-      border: none;
-      background-color: #2563eb;
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
+  });
+
+  function addActive(x) {
+    if (!x) return false;
+    removeActive(x);
+    if (currentFocus >= x.length) currentFocus = 0;
+    if (currentFocus < 0) currentFocus = (x.length - 1);
+    x[currentFocus].classList.add("autocomplete-active");
+  }
+
+  function removeActive(x) {
+    for (let i = 0; i < x.length; i++) {
+      x[i].classList.remove("autocomplete-active");
     }
-    table {
-      margin: 20px auto;
-      border-collapse: collapse;
-      background: white;
-      width: 85%;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+
+  function closeAllLists(elmnt) {
+    const x = document.getElementsByClassName("autocomplete-item");
+    for (let i = x.length - 1; i >= 0; i--) {
+      if (elmnt != x[i] && elmnt != inp) x[i].parentNode.remove();
     }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 10px;
-      text-align: left;
-    }
-    th {
-      background: #e5e7eb;
-    }
-    #result {
-      margin-top: 20px;
-    }
-    /* Gợi ý danh sách */
-    .suggestions {
-      position: absolute;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      width: 280px;
-      max-height: 180px;
-      overflow-y: auto;
-      margin-left: calc(50% - 140px);
-      z-index: 10;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    .suggestion-item {
-      padding: 8px;
-      text-align: left;
-      cursor: pointer;
-    }
-    .suggestion-item:hover {
-      background-color: #e5e7eb;
-    }
-  </style>
+  }
+
+  document.addEventListener("click", function (e) {
+    closeAllLists(e.target);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  autocomplete(document.getElementById("search_input"));
+});
+</script>
 </head>
 <body>
-  <h1>Tra cứu Mã Nhà Trạm</h1>
-  <div style="position: relative; display: inline-block;">
-    <input type="text" id="search" placeholder="Nhập mã trạm, cụm hoặc huyện..." oninput="showSuggestions()">
-    <div id="suggestions" class="suggestions"></div>
-  </div>
-  <button onclick="searchData()">Tra cứu</button>
-  <div id="result"></div>
-
-  <script>
-    // 👉 ID Google Sheet của bạn
-    const sheetId = "1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8";
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
-
-    let sheetData = [];
-
-    // Lấy dữ liệu từ Google Sheet
-    fetch(sheetUrl)
-      .then(res => res.text(
+<h2>Tra cứu trạm 5G</h2>
+<div style="position: relative; width: 300px;">
+  <input type="text" id="search_input" placeholder="Nhập mã trạm, cụm hoặc huyện">
+</div>
+<button onclick="search()">Tra cứu</button>
+<div id="table_div" style="margin-top: 20px;"></div>
+</body>
+</html>
