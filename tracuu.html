@@ -43,26 +43,27 @@ function handleQueryResponse(response) {
   }
   dataTable = response.getDataTable();
 
-  // Tạo danh sách gợi ý có loại (Mã trạm / Cụm / Huyện)
+  // Lấy danh sách gợi ý riêng cho từng cột, loại bỏ trống và lọc trùng
   const maTramSet = new Set();
   const cumSet = new Set();
   const huyenSet = new Set();
   for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
-    const maTram = dataTable.getValue(r, 0).toString().trim();
-    const cum = dataTable.getValue(r, 1).toString().trim();
-    const huyen = dataTable.getValue(r, 2).toString().trim();
+    const maTram = (dataTable.getValue(r, 0) || "").toString().trim();
+    const cum = (dataTable.getValue(r, 1) || "").toString().trim();
+    const huyen = (dataTable.getValue(r, 2) || "").toString().trim();
+
     if (maTram) maTramSet.add(maTram + " (Mã trạm)");
     if (cum) cumSet.add(cum + " (Cụm)");
     if (huyen) huyenSet.add(huyen + " (Huyện)");
   }
-  suggestions = Array.from(maTramSet).concat(Array.from(cumSet)).concat(Array.from(huyenSet));
+  suggestions = [...maTramSet, ...cumSet, ...huyenSet];
 
   // Vẽ bảng đầy đủ ban đầu
   const table = new google.visualization.Table(document.getElementById('table_div'));
   table.draw(dataTable, {showRowNumber: true, width: '100%', height: '100%'});
 }
 
-// Hàm search với loại
+// Hàm search
 function search(keyword = null, type = null) {
   if (!dataTable) return;
   let val = keyword ? keyword.toLowerCase() : document.getElementById('search_input').value.trim().toLowerCase();
@@ -71,7 +72,7 @@ function search(keyword = null, type = null) {
     return;
   }
 
-  // Nếu chọn gợi ý có nhãn, loại bỏ nhãn trước khi search
+  // Loại bỏ nhãn (Mã trạm / Cụm / Huyện) nếu có
   val = val.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi, '');
 
   const filtered = new google.visualization.DataTable();
@@ -81,9 +82,9 @@ function search(keyword = null, type = null) {
 
   for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
     let match = false;
-    const maTram = dataTable.getValue(r, 0).toString().toLowerCase();
-    const cum = dataTable.getValue(r, 1).toString().toLowerCase();
-    const huyen = dataTable.getValue(r, 2).toString().toLowerCase();
+    const maTram = (dataTable.getValue(r, 0) || "").toString().toLowerCase();
+    const cum = (dataTable.getValue(r, 1) || "").toString().toLowerCase();
+    const huyen = (dataTable.getValue(r, 2) || "").toString().toLowerCase();
 
     if (type === 'Mã trạm' && maTram.includes(val)) match = true;
     else if (type === 'Cụm' && cum.includes(val)) match = true;
@@ -123,7 +124,7 @@ function autocomplete(inp) {
         itemDiv.innerHTML = suggestions[i];
         itemDiv.classList.add("autocomplete-item");
 
-        // Khi click gợi ý, lấy keyword và loại, tra cứu ngay
+        // Click gợi ý → tra cứu
         itemDiv.addEventListener("click", function() {
           inp.value = this.innerText;
           closeAllLists();
