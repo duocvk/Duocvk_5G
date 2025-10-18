@@ -17,7 +17,7 @@
     input {
       padding: 10px;
       font-size: 16px;
-      width: 300px;
+      width: 280px;
       border-radius: 8px;
       border: 1px solid #ccc;
       margin-right: 10px;
@@ -35,7 +35,7 @@
       margin: 20px auto;
       border-collapse: collapse;
       background: white;
-      width: 90%;
+      width: 85%;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
     th, td {
@@ -49,17 +49,16 @@
     #result {
       margin-top: 20px;
     }
-
-    /* Gợi ý */
+    /* Gợi ý danh sách */
     .suggestions {
       position: absolute;
       background: white;
       border: 1px solid #ccc;
       border-radius: 8px;
-      width: 300px;
-      max-height: 200px;
+      width: 280px;
+      max-height: 180px;
       overflow-y: auto;
-      margin-left: calc(50% - 150px);
+      margin-left: calc(50% - 140px);
       z-index: 10;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
@@ -76,121 +75,19 @@
 <body>
   <h1>Tra cứu Mã Nhà Trạm</h1>
   <div style="position: relative; display: inline-block;">
-    <input type="text" id="search" placeholder="Nhập mã trạm, huyện hoặc cụm..." oninput="showSuggestions()">
+    <input type="text" id="search" placeholder="Nhập mã trạm, cụm hoặc huyện..." oninput="showSuggestions()">
     <div id="suggestions" class="suggestions"></div>
   </div>
   <button onclick="searchData()">Tra cứu</button>
   <div id="result"></div>
 
   <script>
-    const sheetId = "1XgknHGKVglyIdQtcguQg70rHRymYXF-9"; // ID Google Sheet của bạn
+    // 👉 ID Google Sheet của bạn
+    const sheetId = "1XgknHGKVglyIdQtcguQg70rHRymYXF-9";
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
 
     let sheetData = [];
 
     // Lấy dữ liệu từ Google Sheet
     fetch(sheetUrl)
-      .then(res => res.text())
-      .then(rep => {
-        const json = JSON.parse(rep.substr(47).slice(0, -2));
-        const rows = json.table.rows;
-        sheetData = rows.slice(1).map(r => ({
-          cum: r.c[0]?.v || "",
-          ma: r.c[1]?.v || "",
-          cap: r.c[2]?.v || "",
-          tinhtrang: r.c[3]?.v || "",
-          huyen: r.c[4]?.v || ""
-        }));
-      });
-
-    // Hiển thị gợi ý
-    function showSuggestions() {
-      const input = document.getElementById("search").value.trim().toUpperCase();
-      const suggestionBox = document.getElementById("suggestions");
-      suggestionBox.innerHTML = "";
-
-      if (!input) return;
-
-      const matches = sheetData.filter(row =>
-        row.ma.toUpperCase().includes(input) ||
-        row.huyen.toUpperCase().includes(input) ||
-        row.cum.toUpperCase().includes(input)
-      ).slice(0, 10);
-
-      matches.forEach(row => {
-        const item = document.createElement("div");
-        item.classList.add("suggestion-item");
-        item.textContent = `${row.ma} - ${row.huyen} - ${row.cum}`;
-        item.onclick = () => {
-          document.getElementById("search").value = row.ma;
-          suggestionBox.innerHTML = "";
-          searchData();
-        };
-        suggestionBox.appendChild(item);
-      });
-    }
-
-    // Tra cứu dữ liệu
-    function searchData() {
-      const query = document.getElementById("search").value.trim().toUpperCase();
-      const resultDiv = document.getElementById("result");
-
-      if (!query) {
-        resultDiv.innerHTML = "<p style='color:red;'>Vui lòng nhập mã trạm, huyện hoặc cụm!</p>";
-        return;
-      }
-
-      // Nếu nhập đúng mã trạm
-      const exact = sheetData.find(row => row.ma.toUpperCase() === query);
-      if (exact) {
-        resultDiv.innerHTML = `
-          <table>
-            <tr><th>Cụm</th><td>${exact.cum}</td></tr>
-            <tr><th>Mã nhà trạm hiện tại</th><td>${exact.ma}</td></tr>
-            <tr><th>Cấp VT</th><td>${exact.cap}</td></tr>
-            <tr><th>Tình trạng</th><td>${exact.tinhtrang}</td></tr>
-            <tr><th>Huyện</th><td>${exact.huyen}</td></tr>
-          </table>
-        `;
-        return;
-      }
-
-      // Nếu không đúng mã → tìm theo huyện hoặc cụm (nhiều kết quả)
-      const found = sheetData.filter(row =>
-        row.huyen.toUpperCase().includes(query) ||
-        row.cum.toUpperCase().includes(query)
-      );
-
-      if (found.length > 0) {
-        let rowsHtml = found.map(r => `
-          <tr>
-            <td>${r.cum}</td>
-            <td>${r.ma}</td>
-            <td>${r.cap}</td>
-            <td>${r.tinhtrang}</td>
-            <td>${r.huyen}</td>
-          </tr>
-        `).join("");
-
-        resultDiv.innerHTML = `
-          <h3>Kết quả (${found.length} trạm):</h3>
-          <table>
-            <tr>
-              <th>Cụm</th>
-              <th>Mã nhà trạm hiện tại</th>
-              <th>Cấp VT</th>
-              <th>Tình trạng</th>
-              <th>Huyện</th>
-            </tr>
-            ${rowsHtml}
-          </table>
-        `;
-      } else {
-        resultDiv.innerHTML = `<p style='color:red;'>Không tìm thấy kết quả cho "${query}"</p>`;
-      }
-
-      document.getElementById("suggestions").innerHTML = "";
-    }
-  </script>
-</body>
-</html>
+      .then(res => res.text(
