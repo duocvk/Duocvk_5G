@@ -12,6 +12,7 @@
     position: absolute;
     background: white;
     z-index: 99;
+    width: 100%;
   }
   .autocomplete-item {
     padding: 5px;
@@ -42,15 +43,19 @@ function handleQueryResponse(response) {
   }
   dataTable = response.getDataTable();
 
-  // Lấy danh sách gợi ý cho autocomplete
-  suggestions = [];
+  // Lấy danh sách gợi ý cho autocomplete (lọc trùng)
+  const tempSet = new Set();
   for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
-    suggestions.push(dataTable.getValue(r, 0).toString()); // Mã trạm
-    suggestions.push(dataTable.getValue(r, 1).toString()); // Cụm
-    suggestions.push(dataTable.getValue(r, 2).toString()); // Huyện
+    const maTram = dataTable.getValue(r, 0).toString();
+    const cum = dataTable.getValue(r, 1).toString();
+    const huyen = dataTable.getValue(r, 2).toString();
+    if (maTram) tempSet.add(maTram);
+    if (cum) tempSet.add(cum);
+    if (huyen) tempSet.add(huyen);
   }
+  suggestions = Array.from(tempSet);
 
-  // Vẽ table đầy đủ ban đầu
+  // Vẽ bảng đầy đủ ban đầu
   const table = new google.visualization.Table(document.getElementById('table_div'));
   table.draw(dataTable, {showRowNumber: true, width: '100%', height: '100%'});
 }
@@ -109,6 +114,7 @@ function autocomplete(inp) {
         itemDiv.addEventListener("click", function() {
           inp.value = this.innerText;
           closeAllLists();
+          search(); // Tự động tra cứu khi chọn gợi ý
         });
         listDiv.appendChild(itemDiv);
         count++;
@@ -129,6 +135,8 @@ function autocomplete(inp) {
       e.preventDefault();
       if (currentFocus > -1) {
         if (x) x[currentFocus].click();
+      } else {
+        search(); // enter cũng tra cứu nếu không chọn gợi ý
       }
     }
   });
@@ -169,7 +177,9 @@ document.addEventListener("DOMContentLoaded", function() {
 <div style="position: relative; width: 300px;">
   <input type="text" id="search_input" placeholder="Nhập mã trạm, cụm hoặc huyện">
 </div>
-<button onclick="search()">Tra cứu</button>
+<div style="margin-top: 10px;">
+  <button onclick="search()">Tra cứu</button>
+</div>
 <div id="table_div" style="margin-top: 20px;"></div>
 </body>
 </html>
