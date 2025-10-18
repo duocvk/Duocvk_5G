@@ -49,6 +49,11 @@ h2 { margin-bottom:10px; }
   <div id="filter_div">
     <select id="filter_huyen"></select>
     <select id="filter_cum"></select>
+    <select id="filter_type">
+      <option value="">Tất cả trạm</option>
+      <option value="lapdat">Trạm đã lắp đặt</option>
+      <option value="tichhop">Trạm đã tích hợp</option>
+    </select>
   </div>
   <div id="total_ok"></div>
   <div id="table_total" style="margin-top:20px;"></div>
@@ -125,7 +130,26 @@ function initAuto(inpId,dt,sug,tableDiv){
         item.innerHTML=sug[i];
         item.classList.add('autocomplete-item');
         item.addEventListener('click',function(){
-          inp.value=this.innerText; closeAllLists(); searchVal(inp.value,dt,tableDiv);
+          // --- LỌC DỮ LIỆU THEO GỢI Ý ---
+          let valText = this.innerText.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
+          let col = 0;
+          if(this.innerText.includes('(Cụm)')) col = 1;
+          else if(this.innerText.includes('(Huyện)')) col = 2;
+
+          const f = new google.visualization.DataTable();
+          for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c), dt.getColumnLabel(c));
+          for(let r=0;r<dt.getNumberOfRows();r++){
+              if((dt.getValue(r,col)||'').toString().toLowerCase().includes(valText)){
+                  const row = [];
+                  for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c));
+                  f.addRow(row);
+              }
+          }
+          drawTable(f,tableDiv);
+          if(tableDiv==='table_total') updateTotalCount(f);
+
+          // --- XÓA INPUT SAU KHI CHỌN ---
+          inp.value='';
         });
         list.appendChild(item); count++;
       }
@@ -135,59 +159,51 @@ function initAuto(inpId,dt,sug,tableDiv){
   document.addEventListener('click',e=>closeAllLists());
 }
 
-// --- SEARCH ---
-function searchVal(val,dt,div){
-  val = val.toLowerCase().replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'');
-  const f=new google.visualization.DataTable();
-  for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c), dt.getColumnLabel(c));
-  for(let r=0;r<dt.getNumberOfRows();r++){
-    const ma=(dt.getValue(r,0)||'').toLowerCase();
-    const cum=(dt.getValue(r,1)||'').toLowerCase();
-    const huyen=(dt.getValue(r,2)||'').toLowerCase();
-    if(ma.includes(val)||cum.includes(val)||huyen.includes(val)){
-      const row=[]; for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c)); f.addRow(row);
-    }
-  }
-  drawTable(f,div);
-  if(div==='table_total') updateTotalCount(f);
-}
-
 // --- TOTAL TAB ---
 function setupFilterTotal(dt){
   const hSet=new Set(), cSet=new Set();
   for(let r=0;r<dt.getNumberOfRows();r++){ const h=dt.getValue(r,2)||''; const c=dt.getValue(r,1)||''; if(h) hSet.add(h); if(c) cSet.add(c);}
-  const hS=document.getElementById('filter_huyen'), cS=document.getElementById('filter_cum');
+  const hS=document.getElementById('filter_huyen'), cS=document.getElementById('filter_cum'), tS=document.getElementById('filter_type');
   hS.innerHTML="<option value=''>Tất cả huyện</option>"; cS.innerHTML="<option value=''>Tất cả cụm</option>";
   hSet.forEach(h=>{const o=document.createElement('option'); o.value=h; o.text=h; hS.appendChild(o);});
   cSet.forEach(c=>{const o=document.createElement('option'); o.value=c; o.text=c; cS.appendChild(o);});
-  hS.onchange=filterTotal; cS.onchange=filterTotal;
+  hS.onchange=filterTotal; cS.onchange=filterTotal; tS.onchange=filterTotal;
 }
 
 function filterTotal(){
   const h=document.getElementById('filter_huyen').value.toLowerCase();
   const c=document.getElementById('filter_cum').value.toLowerCase();
+  const type=document.getElementById('filter_type').value;
   const dt=dataTotal; if(!dt) return;
+
   const f=new google.visualization.DataTable();
   for(let col=0;col<dt.getNumberOfColumns();col++) f.addColumn(dt.getColumnType(col), dt.getColumnLabel(col));
+
   for(let r=0;r<dt.getNumberOfRows();r++){
-    const rowH=(dt.getValue(r,2)||'').toLowerCase(); const rowC=(dt.getValue(r,1)||'').toLowerCase();
+    const rowH=(dt.getValue(r,2)||'').toLowerCase();
+    const rowC=(dt.getValue(r,1)||'').toLowerCase();
+
     if((!h || rowH===h) && (!c || rowC===c)){
-      const row=[]; for(let col=0;col<dt.getNumberOfColumns();col++) row.push(dt.getValue(r,col)); f.addRow(row);
+      if(type==='lapdat' && dt.getValue(r,5)!=1) continue;
+      if(type==='tichhop' && dt.getValue(r,6)!=1) continue;
+
+      const row=[]; for(let col=0;col<dt.getNumberOfColumns();col++) row.push(dt.getValue(r,col));
+      f.addRow(row);
     }
   }
-  drawTable(f,'table_total'); updateTotalCount(f);
+  drawTable(f,'table_total');
+  updateTotalCount(f);
 }
 
-// --- UPDATE TOTAL ---
 function updateTotalCount(dt){
-  let countLapDat = 0; let countTichHop = 0;
-  const colLapDat = 5; // cột F
-  const colTichHop = 6; // cột G
+  let countLapDat = 0, countTichHop = 0;
+  const colLapDat = 5; // F
+  const colTichHop = 6; // G
   for(let r=0;r<dt.getNumberOfRows();r++){
     if(dt.getValue(r,colLapDat)==1) countLapDat++;
     if(dt.getValue(r,colTichHop)==1) countTichHop++;
   }
-  document.getElementById('total_ok').innerText = 
+  document.getElementById('total_ok').innerText =
     "Trạm đã lắp đặt: "+countLapDat+" | Trạm đã tích hợp: "+countTichHop;
 }
 </script>
