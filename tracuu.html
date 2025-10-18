@@ -5,45 +5,76 @@
 <title>Tra cứu trạm 5G</title>
 <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 <style>
-  #autocomplete-list {
-    border: 1px solid #d4d4d4;
-    max-height: 150px;
-    overflow-y: auto;
-    position: absolute;
-    background: white;
-    z-index: 99;
-    width: 100%;
-  }
-  .autocomplete-item {
-    padding: 5px;
-    cursor: pointer;
-  }
-  .autocomplete-item:hover {
-    background-color: #e9e9e9;
-  }
+body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
+h2 { margin-bottom: 10px; }
+.tabs { display: flex; margin-bottom: 10px; }
+.tab { padding: 10px 20px; cursor: pointer; background: #eee; margin-right: 5px; border-radius: 5px 5px 0 0; }
+.tab.active { background: #4285F4; color: white; font-weight: bold; }
+.tab-content { display: none; background: white; padding: 15px; border-radius: 0 5px 5px 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.tab-content.active { display: block; }
+#autocomplete-list { border: 1px solid #d4d4d4; max-height: 150px; overflow-y: auto; position: absolute; background: white; z-index: 99; width: 100%; }
+.autocomplete-item { padding: 5px; cursor: pointer; }
+.autocomplete-item:hover { background-color: #e9e9e9; }
+#filter_div select { margin-right: 10px; padding: 5px; }
+#total_ok { margin: 10px 0; font-weight: bold; color: #333; }
 </style>
 <script>
 google.charts.load('current', {'packages':['table']});
-google.charts.setOnLoadCallback(drawTable);
 
-let dataTable;
-let suggestions = [];
+let dataTables = {}; // Lưu DataTable cho từng sheet
+let suggestions = {}; // Autocomplete suggestions theo sheet
+let currentKeyword = "";
 
-function drawTable() {
-  const query = new google.visualization.Query(
-    'https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=sheet'
-  );
-  query.send(handleQueryResponse);
+// Các sheet
+const sheets = { 
+  "chung": "sheet",
+  "calloff": "calloff",
+  "total": "sheet"
+};
+
+document.addEventListener("DOMContentLoaded", function() {
+  initTabs();
+  initAutocomplete();
+  loadAllSheets();
+});
+
+// --- TABS ---
+function initTabs() {
+  const tabs = document.querySelectorAll(".tab");
+  tabs.forEach(tab => {
+    tab.addEventListener("click", function() {
+      tabs.forEach(t => t.classList.remove("active"));
+      this.classList.add("active");
+      const contents = document.querySelectorAll(".tab-content");
+      contents.forEach(c => c.classList.remove("active"));
+      document.getElementById(this.dataset.target).classList.add("active");
+    });
+  });
 }
 
-function handleQueryResponse(response) {
+// --- LOAD DATA ---
+function loadAllSheets() {
+  for (const key in sheets) {
+    loadSheet(key, sheets[key]);
+  }
+}
+
+function loadSheet(key, sheetName) {
+  const query = new google.visualization.Query(
+    `https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=${sheetName}`
+  );
+  query.send(response => handleQueryResponse(response, key));
+}
+
+function handleQueryResponse(response, key) {
   if (response.isError()) {
     alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
     return;
   }
-  dataTable = response.getDataTable();
+  const dataTable = response.getDataTable();
+  dataTables[key] = dataTable;
 
-  // Lấy danh sách gợi ý riêng cho từng cột, loại bỏ trống và lọc trùng
+  // Tạo suggestions
   const maTramSet = new Set();
   const cumSet = new Set();
   const huyenSet = new Set();
@@ -51,145 +82,118 @@ function handleQueryResponse(response) {
     const maTram = (dataTable.getValue(r, 0) || "").toString().trim();
     const cum = (dataTable.getValue(r, 1) || "").toString().trim();
     const huyen = (dataTable.getValue(r, 2) || "").toString().trim();
-
     if (maTram) maTramSet.add(maTram + " (Mã trạm)");
     if (cum) cumSet.add(cum + " (Cụm)");
     if (huyen) huyenSet.add(huyen + " (Huyện)");
   }
-  suggestions = [...maTramSet, ...cumSet, ...huyenSet];
+  suggestions[key] = [...maTramSet, ...cumSet, ...huyenSet];
 
-  // Vẽ bảng đầy đủ ban đầu
-  const table = new google.visualization.Table(document.getElementById('table_div'));
-  table.draw(dataTable, {showRowNumber: true, width: '100%', height: '100%'});
+  // Vẽ bảng nếu là tab chung hoặc calloff lần đầu
+  if(key === "chung" || key==="calloff") drawTable(key);
+  if(key==="total") updateTotalFilter();
 }
 
-// Hàm search
-function search(keyword = null, type = null) {
-  if (!dataTable) return;
-  let val = keyword ? keyword.toLowerCase() : document.getElementById('search_input').value.trim().toLowerCase();
-  if (!val) {
-    drawTable();
-    return;
-  }
+// --- AUTOCOMPLETE ---
+function initAutocomplete() {
+  const inputs = document.querySelectorAll(".search-input");
+  inputs.forEach(inp => {
+    let currentFocus;
+    inp.addEventListener("input", function() {
+      const val = this.value.toLowerCase();
+      closeAllLists();
+      if (!val) return false;
+      const sheetKey = this.dataset.sheet;
+      const listDiv = document.createElement("DIV");
+      listDiv.setAttribute("id", "autocomplete-list");
+      this.parentNode.appendChild(listDiv);
+      let count = 0;
+      for (let i = 0; i < suggestions[sheetKey].length && count < 10; i++) {
+        if (suggestions[sheetKey][i].toLowerCase().includes(val)) {
+          const itemDiv = document.createElement("DIV");
+          itemDiv.innerHTML = suggestions[sheetKey][i];
+          itemDiv.classList.add("autocomplete-item");
+          itemDiv.addEventListener("click", function() {
+            inp.value = this.innerText;
+            closeAllLists();
+            let type = null;
+            if(this.innerText.includes("(Mã trạm)")) type="Mã trạm";
+            else if(this.innerText.includes("(Cụm)")) type="Cụm";
+            else if(this.innerText.includes("(Huyện)")) type="Huyện";
+            search(inp.value, type, sheetKey);
+          });
+          listDiv.appendChild(itemDiv);
+          count++;
+        }
+      }
+    });
+    inp.addEventListener("keydown", function(e) {
+      let x = document.getElementById("autocomplete-list");
+      if(x) x=x.getElementsByTagName("div");
+      if(e.keyCode==40){ currentFocus++; addActive(x);}
+      else if(e.keyCode==38){ currentFocus--; addActive(x);}
+      else if(e.keyCode==13){ e.preventDefault(); if(currentFocus>-1 && x) x[currentFocus].click(); else search(inp.value,null,inp.dataset.sheet);}
+    });
+    function addActive(x){ if(!x) return false; removeActive(x); if(currentFocus>=x.length) currentFocus=0; if(currentFocus<0) currentFocus=x.length-1; x[currentFocus].classList.add("autocomplete-active");}
+    function removeActive(x){ for(let i=0;i<x.length;i++) x[i].classList.remove("autocomplete-active");}
+    function closeAllLists(elmnt){ const x=document.getElementsByClassName("autocomplete-item"); for(let i=x.length-1;i>=0;i--){ if(elmnt!=x[i] && elmnt!=inp) x[i].parentNode.remove();}}
+    document.addEventListener("click",function(e){ closeAllLists(e.target);});
+  });
+}
 
-  // Loại bỏ nhãn (Mã trạm / Cụm / Huyện) nếu có
-  val = val.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi, '');
+// --- SEARCH ---
+function search(keyword=null,type=null,sheetKey) {
+  if(!dataTables[sheetKey]) return;
+  const dataTable = dataTables[sheetKey];
+  let val = keyword ? keyword.toLowerCase() : "";
+  val = val.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,"");
 
   const filtered = new google.visualization.DataTable();
-  for (let c = 0; c < dataTable.getNumberOfColumns(); c++) {
-    filtered.addColumn(dataTable.getColumnType(c), dataTable.getColumnLabel(c));
-  }
+  for(let c=0;c<dataTable.getNumberOfColumns();c++) filtered.addColumn(dataTable.getColumnType(c),dataTable.getColumnLabel(c));
 
-  for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
-    let match = false;
-    const maTram = (dataTable.getValue(r, 0) || "").toString().toLowerCase();
-    const cum = (dataTable.getValue(r, 1) || "").toString().toLowerCase();
-    const huyen = (dataTable.getValue(r, 2) || "").toString().toLowerCase();
-
-    if (type === 'Mã trạm' && maTram.includes(val)) match = true;
-    else if (type === 'Cụm' && cum.includes(val)) match = true;
-    else if (type === 'Huyện' && huyen.includes(val)) match = true;
-    else if (!type && (maTram.includes(val) || cum.includes(val) || huyen.includes(val))) match = true;
-
-    if (match) {
-      const row = [];
-      for (let c = 0; c < dataTable.getNumberOfColumns(); c++) {
-        row.push(dataTable.getValue(r, c));
-      }
+  for(let r=0;r<dataTable.getNumberOfRows();r++){
+    let match=false;
+    const maTram=(dataTable.getValue(r,0)||"").toString().toLowerCase();
+    const cum=(dataTable.getValue(r,1)||"").toString().toLowerCase();
+    const huyen=(dataTable.getValue(r,2)||"").toString().toLowerCase();
+    if(type==="Mã trạm" && maTram.includes(val)) match=true;
+    else if(type==="Cụm" && cum.includes(val)) match=true;
+    else if(type==="Huyện" && huyen.includes(val)) match=true;
+    else if(!type && (maTram.includes(val)||cum.includes(val)||huyen.includes(val))) match=true;
+    if(match){
+      const row=[];
+      for(let c=0;c<dataTable.getNumberOfColumns();c++) row.push(dataTable.getValue(r,c));
       filtered.addRow(row);
     }
   }
 
-  const table = new google.visualization.Table(document.getElementById('table_div'));
-  table.draw(filtered, {showRowNumber: true, width: '100%', height: '100%'});
+  drawFilteredTable(filtered,sheetKey);
 }
 
-// Autocomplete
-function autocomplete(inp) {
-  let currentFocus;
-
-  inp.addEventListener("input", function() {
-    const val = this.value.toLowerCase();
-    closeAllLists();
-    if (!val) return false;
-
-    const listDiv = document.createElement("DIV");
-    listDiv.setAttribute("id", "autocomplete-list");
-    this.parentNode.appendChild(listDiv);
-
-    let count = 0;
-    for (let i = 0; i < suggestions.length && count < 10; i++) {
-      if (suggestions[i].toLowerCase().includes(val)) {
-        const itemDiv = document.createElement("DIV");
-        itemDiv.innerHTML = suggestions[i];
-        itemDiv.classList.add("autocomplete-item");
-
-        // Click gợi ý → tra cứu
-        itemDiv.addEventListener("click", function() {
-          inp.value = this.innerText;
-          closeAllLists();
-
-          let type = null;
-          if (this.innerText.includes("(Mã trạm)")) type = "Mã trạm";
-          else if (this.innerText.includes("(Cụm)")) type = "Cụm";
-          else if (this.innerText.includes("(Huyện)")) type = "Huyện";
-
-          search(inp.value, type);
-        });
-
-        listDiv.appendChild(itemDiv);
-        count++;
-      }
-    }
-  });
-
-  inp.addEventListener("keydown", function(e) {
-    let x = document.getElementById("autocomplete-list");
-    if (x) x = x.getElementsByTagName("div");
-    if (e.keyCode == 40) { currentFocus++; addActive(x); } 
-    else if (e.keyCode == 38) { currentFocus--; addActive(x); } 
-    else if (e.keyCode == 13) { 
-      e.preventDefault(); 
-      if (currentFocus > -1) { if (x) x[currentFocus].click(); } 
-      else search(); 
-    }
-  });
-
-  function addActive(x) {
-    if (!x) return false;
-    removeActive(x);
-    if (currentFocus >= x.length) currentFocus = 0;
-    if (currentFocus < 0) currentFocus = (x.length - 1);
-    x[currentFocus].classList.add("autocomplete-active");
-  }
-
-  function removeActive(x) {
-    for (let i = 0; i < x.length; i++) x[i].classList.remove("autocomplete-active");
-  }
-
-  function closeAllLists(elmnt) {
-    const x = document.getElementsByClassName("autocomplete-item");
-    for (let i = x.length - 1; i >= 0; i--) {
-      if (elmnt != x[i] && elmnt != inp) x[i].parentNode.remove();
-    }
-  }
-
-  document.addEventListener("click", function (e) { closeAllLists(e.target); });
+// --- DRAW TABLE ---
+function drawTable(sheetKey){
+  if(!dataTables[sheetKey]) return;
+  const table = new google.visualization.Table(document.getElementById("table_"+sheetKey));
+  table.draw(dataTables[sheetKey],{showRowNumber:true,width:"100%",height:"100%"});
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-  autocomplete(document.getElementById("search_input"));
-});
-</script>
-</head>
-<body>
-<h2>Tra cứu trạm 5G</h2>
-<div style="position: relative; width: 300px;">
-  <input type="text" id="search_input" placeholder="Nhập mã trạm, cụm hoặc huyện">
-</div>
-<div style="margin-top: 10px;">
-  <button onclick="search()">Tra cứu</button>
-</div>
-<div id="table_div" style="margin-top: 20px;"></div>
-</body>
-</html>
+function drawFilteredTable(filtered,sheetKey){
+  const table = new google.visualization.Table(document.getElementById("table_"+sheetKey));
+  table.draw(filtered,{showRowNumber:true,width:"100%",height:"100%"});
+  if(sheetKey==="total") updateTotalCount(filtered);
+}
+
+// --- TOTAL TRẠM ---
+function updateTotalFilter(){
+  if(!dataTables["total"]) return;
+  const huyenSet = new Set();
+  const cumSet = new Set();
+  const dt=dataTables["total"];
+  for(let r=0;r<dt.getNumberOfRows();r++){
+    const huyen=(dt.getValue(r,2)||"").toString();
+    const cum=(dt.getValue(r,1)||"").toString();
+    if(huyen) huyenSet.add(huyen);
+    if(cum) cumSet.add(cum);
+  }
+  const huyenSelect=document.getElementById("filter_huyen");
+  huyenSelect.innerHTML="<option value=''>Tất cả huyện</option>";
+  huyenSet.forEach(h=>{ const opt
