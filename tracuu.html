@@ -43,34 +43,36 @@ function handleQueryResponse(response) {
   }
   dataTable = response.getDataTable();
 
-  // Lấy danh sách gợi ý với loại (Mã trạm / Cụm / Huyện)
-  const tempSet = new Set();
+  // Tạo danh sách gợi ý có loại (Mã trạm / Cụm / Huyện)
+  const maTramSet = new Set();
+  const cumSet = new Set();
+  const huyenSet = new Set();
   for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
-    const maTram = dataTable.getValue(r, 0).toString();
-    const cum = dataTable.getValue(r, 1).toString();
-    const huyen = dataTable.getValue(r, 2).toString();
-    if (maTram) tempSet.add(maTram + " (Mã trạm)");
-    if (cum) tempSet.add(cum + " (Cụm)");
-    if (huyen) tempSet.add(huyen + " (Huyện)");
+    const maTram = dataTable.getValue(r, 0).toString().trim();
+    const cum = dataTable.getValue(r, 1).toString().trim();
+    const huyen = dataTable.getValue(r, 2).toString().trim();
+    if (maTram) maTramSet.add(maTram + " (Mã trạm)");
+    if (cum) cumSet.add(cum + " (Cụm)");
+    if (huyen) huyenSet.add(huyen + " (Huyện)");
   }
-  suggestions = Array.from(tempSet);
+  suggestions = Array.from(maTramSet).concat(Array.from(cumSet)).concat(Array.from(huyenSet));
 
   // Vẽ bảng đầy đủ ban đầu
   const table = new google.visualization.Table(document.getElementById('table_div'));
   table.draw(dataTable, {showRowNumber: true, width: '100%', height: '100%'});
 }
 
-// Hàm tìm kiếm
-function search() {
+// Hàm search với loại
+function search(keyword = null, type = null) {
   if (!dataTable) return;
-  let keyword = document.getElementById('search_input').value.trim().toLowerCase();
-  if (!keyword) {
-    drawTable(); // Hiển thị tất cả nếu bỏ trống
+  let val = keyword ? keyword.toLowerCase() : document.getElementById('search_input').value.trim().toLowerCase();
+  if (!val) {
+    drawTable();
     return;
   }
 
-  // Nếu từ khóa chứa "(Mã trạm)" hoặc "(Cụm)" hoặc "(Huyện)" thì bỏ nhãn trước khi search
-  keyword = keyword.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi, '');
+  // Nếu chọn gợi ý có nhãn, loại bỏ nhãn trước khi search
+  val = val.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi, '');
 
   const filtered = new google.visualization.DataTable();
   for (let c = 0; c < dataTable.getNumberOfColumns(); c++) {
@@ -78,11 +80,17 @@ function search() {
   }
 
   for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
+    let match = false;
     const maTram = dataTable.getValue(r, 0).toString().toLowerCase();
     const cum = dataTable.getValue(r, 1).toString().toLowerCase();
     const huyen = dataTable.getValue(r, 2).toString().toLowerCase();
 
-    if (maTram.includes(keyword) || cum.includes(keyword) || huyen.includes(keyword)) {
+    if (type === 'Mã trạm' && maTram.includes(val)) match = true;
+    else if (type === 'Cụm' && cum.includes(val)) match = true;
+    else if (type === 'Huyện' && huyen.includes(val)) match = true;
+    else if (!type && (maTram.includes(val) || cum.includes(val) || huyen.includes(val))) match = true;
+
+    if (match) {
       const row = [];
       for (let c = 0; c < dataTable.getNumberOfColumns(); c++) {
         row.push(dataTable.getValue(r, c));
@@ -114,11 +122,20 @@ function autocomplete(inp) {
         const itemDiv = document.createElement("DIV");
         itemDiv.innerHTML = suggestions[i];
         itemDiv.classList.add("autocomplete-item");
+
+        // Khi click gợi ý, lấy keyword và loại, tra cứu ngay
         itemDiv.addEventListener("click", function() {
           inp.value = this.innerText;
           closeAllLists();
-          search(); // Tự động tra cứu khi chọn gợi ý
+
+          let type = null;
+          if (this.innerText.includes("(Mã trạm)")) type = "Mã trạm";
+          else if (this.innerText.includes("(Cụm)")) type = "Cụm";
+          else if (this.innerText.includes("(Huyện)")) type = "Huyện";
+
+          search(inp.value, type);
         });
+
         listDiv.appendChild(itemDiv);
         count++;
       }
