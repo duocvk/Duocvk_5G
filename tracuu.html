@@ -1,75 +1,100 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tra cứu Mã Trạm</title>
+  <meta charset="UTF-8">
+  <title>Tra cứu Mã Nhà Trạm</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 40px; background: #f6f8fa; }
-    h1 { color: #333; }
-    input { padding: 8px; width: 250px; }
-    button { padding: 8px 16px; margin-left: 10px; cursor: pointer; }
-    table { border-collapse: collapse; margin-top: 20px; background: white; }
-    th, td { border: 1px solid #ddd; padding: 10px; }
-    th { background-color: #0078d7; color: white; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 40px;
+      text-align: center;
+    }
+    h1 {
+      color: #2563eb;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      width: 240px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-right: 10px;
+    }
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      border: none;
+      background-color: #2563eb;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      background: white;
+      width: 80%;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background: #e5e7eb;
+    }
+    #result {
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
   <h1>Tra cứu Mã Nhà Trạm</h1>
-  <input type="text" id="searchInput" placeholder="Nhập mã trạm (VD: QNM0206)">
+  <input type="text" id="search" placeholder="Nhập mã trạm (VD: QNM0206)">
   <button onclick="searchData()">Tra cứu</button>
-
-  <table id="resultTable" style="display:none;">
-    <thead>
-      <tr>
-        <th>Cụm</th>
-        <th>Mã nhà trạm hiện tại</th>
-        <th>Cấp VT</th>
-        <th>Tình trạng</th>
-        <th>Huyện</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <p id="noResult" style="color:red; display:none;">Không tìm thấy mã trạm!</p>
+  <div id="result"></div>
 
   <script>
-    const sheetURL = "https://docs.google.com/spreadsheets/d/1XgknHGKVglyIdQtcguQg70rHRymYXF-9/gviz/tq?tqx=out:json";
+    const sheetId = "1XgknHGKVglyIdQtcguQg70rHRymYXF-9"; // ID của bạn
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
 
-    async function loadData() {
-      const res = await fetch(sheetURL);
-      const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
-      return json.table.rows.map(r => r.c.map(c => c ? c.v : ""));
-    }
+    let sheetData = [];
 
-    async function searchData() {
-      const keyword = document.getElementById("searchInput").value.trim().toUpperCase();
-      const data = await loadData();
+    fetch(sheetUrl)
+      .then(res => res.text())
+      .then(rep => {
+        const json = JSON.parse(rep.substr(47).slice(0, -2));
+        const rows = json.table.rows;
+        sheetData = rows.slice(1).map(r => ({
+          cum: r.c[0]?.v || "",
+          ma: r.c[1]?.v || "",
+          cap: r.c[2]?.v || "",
+          tinhtrang: r.c[3]?.v || "",
+          huyen: r.c[4]?.v || ""
+        }));
+      });
 
-      const table = document.getElementById("resultTable");
-      const tbody = table.querySelector("tbody");
-      const noResult = document.getElementById("noResult");
+    function searchData() {
+      const query = document.getElementById("search").value.trim().toUpperCase();
+      const resultDiv = document.getElementById("result");
+      const found = sheetData.find(row => row.ma.toUpperCase() === query);
 
-      tbody.innerHTML = "";
-      table.style.display = "none";
-      noResult.style.display = "none";
-
-      for (let i = 1; i < data.length; i++) {
-        if (data[i][1].toUpperCase() === keyword) {
-          const row = document.createElement("tr");
-          data[i].forEach(cell => {
-            const td = document.createElement("td");
-            td.textContent = cell;
-            row.appendChild(td);
-          });
-          tbody.appendChild(row);
-          table.style.display = "table";
-          return;
-        }
+      if (found) {
+        resultDiv.innerHTML = `
+          <table>
+            <tr><th>Cụm</th><td>${found.cum}</td></tr>
+            <tr><th>Mã nhà trạm hiện tại</th><td>${found.ma}</td></tr>
+            <tr><th>Cấp VT</th><td>${found.cap}</td></tr>
+            <tr><th>Tình trạng</th><td>${found.tinhtrang}</td></tr>
+            <tr><th>Huyện</th><td>${found.huyen}</td></tr>
+          </table>
+        `;
+      } else {
+        resultDiv.innerHTML = `<p style="color:red;">Không tìm thấy mã trạm "${query}"</p>`;
       }
-      noResult.style.display = "block";
     }
   </script>
 </body>
