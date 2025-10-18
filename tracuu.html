@@ -43,15 +43,15 @@ function handleQueryResponse(response) {
   }
   dataTable = response.getDataTable();
 
-  // Lấy danh sách gợi ý cho autocomplete (lọc trùng)
+  // Lấy danh sách gợi ý với loại (Mã trạm / Cụm / Huyện)
   const tempSet = new Set();
   for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
     const maTram = dataTable.getValue(r, 0).toString();
     const cum = dataTable.getValue(r, 1).toString();
     const huyen = dataTable.getValue(r, 2).toString();
-    if (maTram) tempSet.add(maTram);
-    if (cum) tempSet.add(cum);
-    if (huyen) tempSet.add(huyen);
+    if (maTram) tempSet.add(maTram + " (Mã trạm)");
+    if (cum) tempSet.add(cum + " (Cụm)");
+    if (huyen) tempSet.add(huyen + " (Huyện)");
   }
   suggestions = Array.from(tempSet);
 
@@ -63,11 +63,14 @@ function handleQueryResponse(response) {
 // Hàm tìm kiếm
 function search() {
   if (!dataTable) return;
-  const keyword = document.getElementById('search_input').value.trim().toLowerCase();
+  let keyword = document.getElementById('search_input').value.trim().toLowerCase();
   if (!keyword) {
     drawTable(); // Hiển thị tất cả nếu bỏ trống
     return;
   }
+
+  // Nếu từ khóa chứa "(Mã trạm)" hoặc "(Cụm)" hoặc "(Huyện)" thì bỏ nhãn trước khi search
+  keyword = keyword.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi, '');
 
   const filtered = new google.visualization.DataTable();
   for (let c = 0; c < dataTable.getNumberOfColumns(); c++) {
@@ -125,19 +128,12 @@ function autocomplete(inp) {
   inp.addEventListener("keydown", function(e) {
     let x = document.getElementById("autocomplete-list");
     if (x) x = x.getElementsByTagName("div");
-    if (e.keyCode == 40) { // xuống
-      currentFocus++;
-      addActive(x);
-    } else if (e.keyCode == 38) { // lên
-      currentFocus--;
-      addActive(x);
-    } else if (e.keyCode == 13) { // enter
-      e.preventDefault();
-      if (currentFocus > -1) {
-        if (x) x[currentFocus].click();
-      } else {
-        search(); // enter cũng tra cứu nếu không chọn gợi ý
-      }
+    if (e.keyCode == 40) { currentFocus++; addActive(x); } 
+    else if (e.keyCode == 38) { currentFocus--; addActive(x); } 
+    else if (e.keyCode == 13) { 
+      e.preventDefault(); 
+      if (currentFocus > -1) { if (x) x[currentFocus].click(); } 
+      else search(); 
     }
   });
 
@@ -150,9 +146,7 @@ function autocomplete(inp) {
   }
 
   function removeActive(x) {
-    for (let i = 0; i < x.length; i++) {
-      x[i].classList.remove("autocomplete-active");
-    }
+    for (let i = 0; i < x.length; i++) x[i].classList.remove("autocomplete-active");
   }
 
   function closeAllLists(elmnt) {
@@ -162,9 +156,7 @@ function autocomplete(inp) {
     }
   }
 
-  document.addEventListener("click", function (e) {
-    closeAllLists(e.target);
-  });
+  document.addEventListener("click", function (e) { closeAllLists(e.target); });
 }
 
 document.addEventListener("DOMContentLoaded", function() {
