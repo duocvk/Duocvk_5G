@@ -17,6 +17,12 @@ h2 { margin-bottom:10px; }
 .autocomplete-item:hover { background:#e9e9e9; }
 #filter_div select { margin-right:10px; padding:5px; }
 #total_ok { margin:10px 0; font-weight:bold; color:#333; }
+/* Wrap header text */
+.google-visualization-table-th div {
+  white-space: normal !important;
+  word-break: break-word;
+  text-align:center;
+}
 </style>
 </head>
 <body>
@@ -95,6 +101,13 @@ function loadSheet(sheetName,key,isTotal=false){
   query.send(resp=>{
     if(resp.isError()){ alert(resp.getMessage()); return; }
     const dt = resp.getDataTable();
+
+    // Wrap header text
+    for(let c=0;c<dt.getNumberOfColumns();c++){
+      const label = dt.getColumnLabel(c);
+      dt.setColumnLabel(c,'<div style="white-space:normal;">'+label+'</div>');
+    }
+
     if(key==='chung'){ dataChung=dt; sugChung=getSug(dt); drawTable(dt,'table_chung'); initAuto('search_chung',dt,sugChung,'table_chung'); }
     if(key==='calloff'){ dataCalloff=dt; sugCalloff=getSug(dt); drawTable(dt,'table_calloff'); initAuto('search_calloff',dt,sugCalloff,'table_calloff'); }
     if(key==='total'){ dataTotal=dt; sugTotal=getSug(dt); drawTable(dt,'table_total'); setupFilterTotal(dt); updateTotalCount(dt); }
@@ -111,7 +124,7 @@ function getSug(dt){
   return Array.from(s);
 }
 
-function drawTable(dt,div){ new google.visualization.Table(document.getElementById(div)).draw(dt,{showRowNumber:true,width:'100%',height:'100%'}); }
+function drawTable(dt,div){ new google.visualization.Table(document.getElementById(div)).draw(dt,{showRowNumber:true,width:'100%',height:'100%',allowHtml:true,page:'enable',pageSize:20}); }
 
 // --- AUTOCOMPLETE ---
 function initAuto(inpId,dt,sug,tableDiv){
@@ -130,7 +143,6 @@ function initAuto(inpId,dt,sug,tableDiv){
         item.innerHTML=sug[i];
         item.classList.add('autocomplete-item');
         item.addEventListener('click',function(){
-          // --- LỌC DỮ LIỆU THEO GỢI Ý ---
           let valText = this.innerText.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
           let col = 0;
           if(this.innerText.includes('(Cụm)')) col = 1;
@@ -148,7 +160,7 @@ function initAuto(inpId,dt,sug,tableDiv){
           drawTable(f,tableDiv);
           if(tableDiv==='table_total') updateTotalCount(f);
 
-          // --- XÓA INPUT SAU KHI CHỌN ---
+          // XÓA INPUT SAU KHI CHỌN
           inp.value='';
         });
         list.appendChild(item); count++;
