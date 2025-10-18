@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tra cứu dữ liệu - đơn giản</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;margin:18px}
+    header{display:flex;gap:12px;align-items:center}
+    input,select,button{padding:8px;border-radius:6px;border:1px solid #ddd}
+    table{border-collapse:collapse;width:100%;margin-top:12px}
+    th,td{padding:8px;border:1px solid #eee;text-align:left}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .hint{color:#666;font-size:13px;margin-top:8px}
+    #resultsWrap{margin-top:12px}
+  </style>
+  <!-- SheetJS (XLSX) để đọc file Excel trong trình duyệt -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Tra cứu dữ liệu — đơn giản</h1>
+  </header>
+
+  <p class="hint">Upload file .xlsx / .xls / .csv có dữ liệu bảng (dòng 1 là header). Sau khi tải lên, nhập từ khóa để tra cứu.</p>
+
+  <div class="controls">
+    <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" />
+    <select id="sheetSelect" style="min-width:160px;display:none"></select>
+    <select id="columnSelect" style="min-width:160px;display:none"></select>
+    <input id="query" placeholder="Nhập từ khóa... (tìm trong cột hoặc toàn bảng)" style="flex:1;min-width:220px" />
+    <button id="searchBtn">Tìm</button>
+    <button id="showAllBtn">Hiện tất cả</button>
+  </div>
+
+  <div id="resultsWrap">
+    <div id="summary" class="hint"></div>
+    <div id="tableContainer"></div>
+  </div>
+
+<script>
+// Biến toàn cục
+let currentData = []; // mảng object {col: value}
+let currentHeaders = [];
+
+const fileInput = document.getElementById('fileInput');
+const sheetSelect = document.getElementById('sheetSelect');
+const columnSelect = document.getElementById('columnSelect');
+const queryEl = document.getElementById('query');
+const searchBtn = document.getElementById('searchBtn');
+const showAllBtn = document.getElementById('showAllBtn');
+const tableContainer = document.getElementById('tableContainer');
+const summary = document.getElementById('summary');
+
+fileInput.addEventListener('change', handleFile);
+sheetSelect.addEventListener('change', handleSheetChange);
+searchBtn.addEventListener('click', doSearch);
+showAllBtn.addEventListener('click', () => renderTable(currentData));
+
+function handleFile(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  const name = f.name.toLowerCase();
+  if(name.endsWith('.csv')){
+    reader.onload = ev => processCSV(ev.target.result);
+    reader.readAsText(f);
+  } else {
+    reader.onload = ev => {
+      const data = new Uint8Array(ev.target.result);
+      const workbook = XLSX.read(data, {type:'array'});
+      setupSheets(workbook);
+      // load first sheet by default
+      loadSheet(workbook, workbook.SheetNames[0]);
+    };
+    reader.readAsArrayBuffer(f);
+  }
+}
+
+function processCSV(text){
+  const workbook = XLSX.read(text, {type:'string'});
+  setupSheets(workbook);
+  loadSheet(workbook, workbook.SheetNames[0]);
+}
+
+function setupSheets(workbook){
+  sheetSelect.innerHTML = '';
+  workbook.SheetNames.forEach(name => {
+    const opt = document.createElement('option'); opt.value = name; opt.textContent = name; sheetSelect.appendChild(opt);
+  });
+  sheetSelect.style.display = 'inline-block';
+}
+
+function handleSheetChange(){
+  const file = fileInput.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  const name = file.name.toLowerCase();
+  if(name.endsWith('.csv')){
+    reader.onload = ev => processCSV(ev.target.result);
+    reader.readAsText(file);
+  } else {
+    reader.onload = ev => {
+      const data = new Uint8Array(ev.target.result);
+      const workbook = XLSX.read(data, {type:'array'});
+      loadSheet(workbook, sheetSelect.value);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function loadSheet(workbook, sheetName){
+  const ws = workbook.Sheets[sheetName];
+  const json = XLSX.utils.sheet_to_json(ws, {defval: ''}); // array of objects
+  currentData = json;
+  currentHeaders = Object.keys(json[0] || {});
+  populateColumnSelect(currentHeaders);
+  summary.textContent = `Tải xong: sheet "${sheetName}" — ${currentData.length} hàng, ${currentHeaders.length} cột.`;
+  renderTable(currentData.slice(0,200)); // show first 200 rows for performance
+}
+
+function populateColumnSelect(headers){
+  columnSelect.innerHTML = '';
+  const optAll = document.createElement('option'); optAll.value = '__ALL__'; optAll.textContent = 'Tìm trong tất cả cột'; columnSelect.appendChild(optAll);
+  headers.forEach(h => { const o=document.createElement('option'); o.value=h; o.textContent=h; columnSelect.appendChild(o); });
+  columnSelect.style.display = 'inline-block';
+}
+
+function doSearch(){
+  const q = queryEl.value.trim().toLowerCase();
+  if(!q){ renderTable(currentData.slice(0,200)); return; }
+  const col = columnSelect.value || '__ALL__';
+  const results = currentData.filter(row => {
+    if(col === '__ALL__'){
+      return Object.values(row).some(v => String(v).toLowerCase().includes(q));
+    } else {
+      return String(row[col] || '').toLowerCase().includes(q);
+    }
+  });
+  summary.textContent = `Kết quả: ${results.length} hàng (từ ${currentData.length}). Hiển thị tối đa 500 hàng.`;
+  renderTable(results.slice(0,500));
+}
+
+function renderTable(data){
+  tableContainer.innerHTML = '';
+  if(!data || data.length===0){ tableContainer.innerHTML = '<div class="hint">Không có dữ liệu để hiển thị.</div>'; return; }
+  const headers = Object.keys(data[0]);
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; trh.appendChild(th); });
+  thead.appendChild(trh);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  data.forEach(row => {
+    const tr = document.createElement('tr');
+    headers.forEach(h => {
+      const td = document.createElement('td'); td.textContent = row[h]; tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  tableContainer.appendChild(table);
+}
+
+// nhỏ: Enter -> tìm
+queryEl.addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
+
+</script>
+</body>
+</html>
