@@ -21,11 +21,9 @@ h2 { margin-bottom: 10px; }
 <script>
 google.charts.load('current', {'packages':['table']});
 
-let dataTables = {}; // Lưu DataTable cho từng sheet
-let suggestions = {}; // Autocomplete suggestions theo sheet
-let currentKeyword = "";
+let dataTables = {}; 
+let suggestions = {}; 
 
-// Các sheet
 const sheets = { 
   "chung": "sheet",
   "calloff": "calloff",
@@ -38,7 +36,6 @@ document.addEventListener("DOMContentLoaded", function() {
   loadAllSheets();
 });
 
-// --- TABS ---
 function initTabs() {
   const tabs = document.querySelectorAll(".tab");
   tabs.forEach(tab => {
@@ -52,7 +49,6 @@ function initTabs() {
   });
 }
 
-// --- LOAD DATA ---
 function loadAllSheets() {
   for (const key in sheets) {
     loadSheet(key, sheets[key]);
@@ -74,26 +70,23 @@ function handleQueryResponse(response, key) {
   const dataTable = response.getDataTable();
   dataTables[key] = dataTable;
 
-  // Tạo suggestions
   const maTramSet = new Set();
   const cumSet = new Set();
   const huyenSet = new Set();
   for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
-    const maTram = (dataTable.getValue(r, 0) || "").toString().trim();
-    const cum = (dataTable.getValue(r, 1) || "").toString().trim();
-    const huyen = (dataTable.getValue(r, 2) || "").toString().trim();
-    if (maTram) maTramSet.add(maTram + " (Mã trạm)");
-    if (cum) cumSet.add(cum + " (Cụm)");
-    if (huyen) huyenSet.add(huyen + " (Huyện)");
+    const maTram = (dataTable.getValue(r,0)||"").toString().trim();
+    const cum = (dataTable.getValue(r,1)||"").toString().trim();
+    const huyen = (dataTable.getValue(r,2)||"").toString().trim();
+    if(maTram) maTramSet.add(maTram + " (Mã trạm)");
+    if(cum) cumSet.add(cum + " (Cụm)");
+    if(huyen) huyenSet.add(huyen + " (Huyện)");
   }
   suggestions[key] = [...maTramSet, ...cumSet, ...huyenSet];
 
-  // Vẽ bảng nếu là tab chung hoặc calloff lần đầu
-  if(key === "chung" || key==="calloff") drawTable(key);
-  if(key==="total") updateTotalFilter();
+  if(key==="chung"||key==="calloff") drawTable(key);
+  if(key==="total") setupTotalFilter();
 }
 
-// --- AUTOCOMPLETE ---
 function initAutocomplete() {
   const inputs = document.querySelectorAll(".search-input");
   inputs.forEach(inp => {
@@ -101,37 +94,37 @@ function initAutocomplete() {
     inp.addEventListener("input", function() {
       const val = this.value.toLowerCase();
       closeAllLists();
-      if (!val) return false;
+      if(!val) return false;
       const sheetKey = this.dataset.sheet;
       const listDiv = document.createElement("DIV");
-      listDiv.setAttribute("id", "autocomplete-list");
+      listDiv.setAttribute("id","autocomplete-list");
       this.parentNode.appendChild(listDiv);
-      let count = 0;
-      for (let i = 0; i < suggestions[sheetKey].length && count < 10; i++) {
-        if (suggestions[sheetKey][i].toLowerCase().includes(val)) {
-          const itemDiv = document.createElement("DIV");
-          itemDiv.innerHTML = suggestions[sheetKey][i];
+      let count=0;
+      for(let i=0;i<suggestions[sheetKey].length && count<10;i++){
+        if(suggestions[sheetKey][i].toLowerCase().includes(val)){
+          const itemDiv=document.createElement("DIV");
+          itemDiv.innerHTML=suggestions[sheetKey][i];
           itemDiv.classList.add("autocomplete-item");
-          itemDiv.addEventListener("click", function() {
-            inp.value = this.innerText;
+          itemDiv.addEventListener("click",function(){
+            inp.value=this.innerText;
             closeAllLists();
-            let type = null;
+            let type=null;
             if(this.innerText.includes("(Mã trạm)")) type="Mã trạm";
             else if(this.innerText.includes("(Cụm)")) type="Cụm";
             else if(this.innerText.includes("(Huyện)")) type="Huyện";
-            search(inp.value, type, sheetKey);
+            search(inp.value,type,sheetKey);
           });
           listDiv.appendChild(itemDiv);
           count++;
         }
       }
     });
-    inp.addEventListener("keydown", function(e) {
-      let x = document.getElementById("autocomplete-list");
+    inp.addEventListener("keydown",function(e){
+      let x=document.getElementById("autocomplete-list");
       if(x) x=x.getElementsByTagName("div");
       if(e.keyCode==40){ currentFocus++; addActive(x);}
       else if(e.keyCode==38){ currentFocus--; addActive(x);}
-      else if(e.keyCode==13){ e.preventDefault(); if(currentFocus>-1 && x) x[currentFocus].click(); else search(inp.value,null,inp.dataset.sheet);}
+      else if(e.keyCode==13){ e.preventDefault(); if(currentFocus>-1 && x)x[currentFocus].click(); else search(inp.value,null,inp.dataset.sheet);}
     });
     function addActive(x){ if(!x) return false; removeActive(x); if(currentFocus>=x.length) currentFocus=0; if(currentFocus<0) currentFocus=x.length-1; x[currentFocus].classList.add("autocomplete-active");}
     function removeActive(x){ for(let i=0;i<x.length;i++) x[i].classList.remove("autocomplete-active");}
@@ -140,14 +133,13 @@ function initAutocomplete() {
   });
 }
 
-// --- SEARCH ---
-function search(keyword=null,type=null,sheetKey) {
+function search(keyword=null,type=null,sheetKey){
   if(!dataTables[sheetKey]) return;
-  const dataTable = dataTables[sheetKey];
-  let val = keyword ? keyword.toLowerCase() : "";
-  val = val.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,"");
+  const dataTable=dataTables[sheetKey];
+  let val=keyword?keyword.toLowerCase():"";
+  val=val.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,"");
 
-  const filtered = new google.visualization.DataTable();
+  const filtered=new google.visualization.DataTable();
   for(let c=0;c<dataTable.getNumberOfColumns();c++) filtered.addColumn(dataTable.getColumnType(c),dataTable.getColumnLabel(c));
 
   for(let r=0;r<dataTable.getNumberOfRows();r++){
@@ -165,29 +157,27 @@ function search(keyword=null,type=null,sheetKey) {
       filtered.addRow(row);
     }
   }
-
   drawFilteredTable(filtered,sheetKey);
 }
 
-// --- DRAW TABLE ---
 function drawTable(sheetKey){
   if(!dataTables[sheetKey]) return;
-  const table = new google.visualization.Table(document.getElementById("table_"+sheetKey));
+  const table=new google.visualization.Table(document.getElementById("table_"+sheetKey));
   table.draw(dataTables[sheetKey],{showRowNumber:true,width:"100%",height:"100%"});
 }
 
 function drawFilteredTable(filtered,sheetKey){
-  const table = new google.visualization.Table(document.getElementById("table_"+sheetKey));
+  const table=new google.visualization.Table(document.getElementById("table_"+sheetKey));
   table.draw(filtered,{showRowNumber:true,width:"100%",height:"100%"});
   if(sheetKey==="total") updateTotalCount(filtered);
 }
 
 // --- TOTAL TRẠM ---
-function updateTotalFilter(){
+function setupTotalFilter(){
   if(!dataTables["total"]) return;
-  const huyenSet = new Set();
-  const cumSet = new Set();
   const dt=dataTables["total"];
+  const huyenSet=new Set();
+  const cumSet=new Set();
   for(let r=0;r<dt.getNumberOfRows();r++){
     const huyen=(dt.getValue(r,2)||"").toString();
     const cum=(dt.getValue(r,1)||"").toString();
@@ -195,5 +185,76 @@ function updateTotalFilter(){
     if(cum) cumSet.add(cum);
   }
   const huyenSelect=document.getElementById("filter_huyen");
+  const cumSelect=document.getElementById("filter_cum");
   huyenSelect.innerHTML="<option value=''>Tất cả huyện</option>";
-  huyenSet.forEach(h=>{ const opt
+  cumSelect.innerHTML="<option value=''>Tất cả cụm</option>";
+  huyenSet.forEach(h=>{ const opt=document.createElement("option"); opt.value=h; opt.text=h; huyenSelect.appendChild(opt);});
+  cumSet.forEach(c=>{ const opt=document.createElement("option"); opt.value=c; opt.text=c; cumSelect.appendChild(opt);});
+}
+
+function filterTotal(){
+  const huyen=document.getElementById("filter_huyen").value.toLowerCase();
+  const cum=document.getElementById("filter_cum").value.toLowerCase();
+  if(!dataTables["total"]) return;
+  const dt=dataTables["total"];
+  const filtered=new google.visualization.DataTable();
+  for(let c=0;c<dt.getNumberOfColumns();c++) filtered.addColumn(dt.getColumnType(c),dt.getColumnLabel(c));
+  for(let r=0;r<dt.getNumberOfRows();r++){
+    const rowHuyen=(dt.getValue(r,2)||"").toString().toLowerCase();
+    const rowCum=(dt.getValue(r,1)||"").toString().toLowerCase();
+    if((!huyen||rowHuyen===huyen) && (!cum||rowCum===cum)){
+      const row=[]; for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c)); filtered.addRow(row);
+    }
+  }
+  drawFilteredTable(filtered,"total");
+}
+
+function updateTotalCount(filtered){
+  let count=0;
+  const statusCol=3; // cột trạng thái (ví dụ cột 3)
+  for(let r=0;r<filtered.getNumberOfRows();r++){
+    const status=(filtered.getValue(r,statusCol)||"").toString().toLowerCase();
+    if(status==="ok") count++;
+  }
+  document.getElementById("total_ok").innerText="Tổng trạm OK: "+count;
+}
+</script>
+</head>
+<body>
+<h2>Tra cứu trạm 5G</h2>
+<div class="tabs">
+  <div class="tab active" data-target="tab_chung">Tra cứu chung</div>
+  <div class="tab" data-target="tab_calloff">Tra cứu Calloff</div>
+  <div class="tab" data-target="tab_total">Tổng trạm đã lắp</div>
+</div>
+
+<!-- Tab Chung -->
+<div class="tab-content active" id="tab_chung">
+  <div style="position: relative; width: 300px;">
+    <input type="text" id="search_chung" class="search-input" placeholder="Nhập mã trạm, cụm hoặc huyện" data-sheet="chung">
+  </div>
+  <div style="margin-top:10px;"><button onclick="search(null,null,'chung')">Tra cứu</button></div>
+  <div id="table_chung" style="margin-top:20px;"></div>
+</div>
+
+<!-- Tab Calloff -->
+<div class="tab-content" id="tab_calloff">
+  <div style="position: relative; width: 300px;">
+    <input type="text" id="search_calloff" class="search-input" placeholder="Nhập mã trạm, cụm hoặc huyện" data-sheet="calloff">
+  </div>
+  <div style="margin-top:10px;"><button onclick="search(null,null,'calloff')">Tra cứu</button></div>
+  <div id="table_calloff" style="margin-top:20px;"></div>
+</div>
+
+<!-- Tab Tổng trạm -->
+<div class="tab-content" id="tab_total">
+  <div id="filter_div">
+    <select id="filter_huyen" onchange="filterTotal()"></select>
+    <select id="filter_cum" onchange="filterTotal()"></select>
+  </div>
+  <div id="total_ok"></div>
+  <div id="table_total" style="margin-top:20px;"></div>
+</div>
+
+</body>
+</html>
