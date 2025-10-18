@@ -17,7 +17,7 @@
     input {
       padding: 10px;
       font-size: 16px;
-      width: 260px;
+      width: 280px;
       border-radius: 8px;
       border: 1px solid #ccc;
       margin-right: 10px;
@@ -50,16 +50,16 @@
       margin-top: 20px;
     }
 
-    /* Gợi ý danh sách */
+    /* Danh sách gợi ý */
     .suggestions {
       position: absolute;
       background: white;
       border: 1px solid #ccc;
       border-radius: 8px;
-      width: 260px;
-      max-height: 180px;
+      width: 280px;
+      max-height: 200px;
       overflow-y: auto;
-      margin-left: calc(50% - 130px);
+      margin-left: calc(50% - 140px);
       z-index: 10;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
@@ -76,7 +76,7 @@
 <body>
   <h1>Tra cứu Mã Nhà Trạm</h1>
   <div style="position: relative; display: inline-block;">
-    <input type="text" id="search" placeholder="Nhập mã trạm (VD: QNM0206)" oninput="showSuggestions()">
+    <input type="text" id="search" placeholder="Nhập mã trạm hoặc huyện (VD: 206 hoặc Phú Ninh)" oninput="showSuggestions()">
     <div id="suggestions" class="suggestions"></div>
   </div>
   <button onclick="searchData()">Tra cứu</button>
@@ -103,7 +103,7 @@
         }));
       });
 
-    // Gợi ý khi gõ
+    // Hiển thị gợi ý
     function showSuggestions() {
       const input = document.getElementById("search").value.trim().toUpperCase();
       const suggestionBox = document.getElementById("suggestions");
@@ -111,14 +111,15 @@
 
       if (!input) return;
 
-      const matches = sheetData
-        .filter(row => row.ma.toUpperCase().includes(input))
-        .slice(0, 10); // Giới hạn 10 kết quả gợi ý
+      const matches = sheetData.filter(row =>
+        row.ma.toUpperCase().includes(input) ||
+        row.huyen.toUpperCase().includes(input)
+      ).slice(0, 10); // Tối đa 10 gợi ý
 
       matches.forEach(row => {
         const item = document.createElement("div");
         item.classList.add("suggestion-item");
-        item.textContent = row.ma + " - " + row.huyen;
+        item.textContent = `${row.ma} - ${row.huyen}`;
         item.onclick = () => {
           document.getElementById("search").value = row.ma;
           suggestionBox.innerHTML = "";
@@ -128,11 +129,19 @@
       });
     }
 
-    // Tra cứu chính xác
+    // Tra cứu chính xác theo mã trạm
     function searchData() {
       const query = document.getElementById("search").value.trim().toUpperCase();
       const resultDiv = document.getElementById("result");
-      const found = sheetData.find(row => row.ma.toUpperCase() === query);
+
+      // Ưu tiên tìm theo mã trạm trước
+      let found = sheetData.find(row => row.ma.toUpperCase() === query);
+
+      // Nếu không trùng mã trạm, tìm theo huyện (lấy kết quả đầu tiên)
+      if (!found) {
+        const byDistrict = sheetData.find(row => row.huyen.toUpperCase().includes(query));
+        found = byDistrict;
+      }
 
       if (found) {
         resultDiv.innerHTML = `
@@ -145,7 +154,7 @@
           </table>
         `;
       } else {
-        resultDiv.innerHTML = `<p style="color:red;">Không tìm thấy mã trạm "${query}"</p>`;
+        resultDiv.innerHTML = `<p style="color:red;">Không tìm thấy kết quả cho "${query}"</p>`;
       }
 
       document.getElementById("suggestions").innerHTML = "";
