@@ -17,7 +17,6 @@ h2 { margin-bottom:10px; }
 .autocomplete-item:hover { background:#e9e9e9; }
 #filter_div select { margin-right:10px; padding:5px; }
 #total_ok { margin:10px 0; font-weight:bold; color:#333; }
-/* Wrap header text */
 .google-visualization-table-th div {
   white-space: normal !important;
   word-break: break-word;
@@ -67,13 +66,12 @@ google.charts.load('current', {'packages':['table']});
 google.charts.setOnLoadCallback(initApp);
 
 let dataChung, dataCalloff, dataTotal;
-let sugChung=[], sugCalloff=[], sugTotal=[];
 
 function initApp(){
   initTabs();
-  loadSheet('sheet', 'chung');
+  loadSheet('sheet','chung');
   loadSheet('calloff','calloff');
-  loadSheet('sheet','total', true);
+  loadSheet('sheet','total',true);
 }
 
 function initTabs(){
@@ -89,40 +87,48 @@ function initTabs(){
 }
 
 function loadSheet(sheetName,key,isTotal=false){
-  const query = new google.visualization.Query(
+  const query=new google.visualization.Query(
     `https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=${sheetName}`
   );
   query.send(resp=>{
     if(resp.isError()){ alert(resp.getMessage()); return; }
-    const dt = resp.getDataTable();
+    const dt=resp.getDataTable();
+
+    // Xác định cột tự động
+    let tramCol=0, cumCol=1, huyenCol=2, lapCol=5, tichhopCol=6, phoneCol=dt.getNumberOfColumns()-1;
+    for(let c=0;c<dt.getNumberOfColumns();c++){
+      const lbl=dt.getColumnLabel(c).toLowerCase();
+      if(lbl.includes('mã trạm')||lbl.includes('tram')) tramCol=c;
+      else if(lbl.includes('cụm')||lbl.includes('cum')) cumCol=c;
+      else if(lbl.includes('huyện')||lbl.includes('huyen')) huyenCol=c;
+      else if(lbl.includes('lắp')) lapCol=c;
+      else if(lbl.includes('tích hợp')) tichhopCol=c;
+      else if(lbl.includes('sđt')||lbl.includes('phone')) phoneCol=c;
+    }
 
     // Wrap header
     for(let c=0;c<dt.getNumberOfColumns();c++){
-      const label = dt.getColumnLabel(c);
-      dt.setColumnLabel(c,'<div style="white-space:normal;">'+label+'</div>');
+      dt.setColumnLabel(c,'<div style="white-space:normal;">'+dt.getColumnLabel(c)+'</div>');
     }
 
-    // Phone link column
-    const phoneCol = dt.getNumberOfColumns()-1;
+    // Phone clickable
     for(let r=0;r<dt.getNumberOfRows();r++){
-      const val = dt.getValue(r, phoneCol);
-      if(val) dt.setValue(r, phoneCol, `<a href="tel:${val}">${val}</a>`);
+      const val=dt.getValue(r,phoneCol);
+      if(val) dt.setValue(r,phoneCol,`<a href="tel:${val}">${val}</a>`);
     }
 
-    if(key==='chung'){ dataChung=dt; sugChung=getSug(dt); drawTable(dt,'table_chung'); initAuto('search_chung',dt,sugChung,'table_chung'); }
-    if(key==='calloff'){ dataCalloff=dt; sugCalloff=getSug(dt); drawTable(dt,'table_calloff'); initAuto('search_calloff',dt,sugCalloff,'table_calloff'); }
-    if(key==='total'){ dataTotal=dt; sugTotal=getSug(dt); drawTable(dt,'table_total'); setupFilterTotal(dt); updateTotalCount(dt); }
-  });
-}
+    // Gợi ý autocomplete
+    const sug=[];
+    for(let r=0;r<dt.getNumberOfRows();r++){
+      sug.push((dt.getValue(r,tramCol)||'')+' (Mã trạm)');
+      sug.push((dt.getValue(r,cumCol)||'')+' (Cụm)');
+      sug.push((dt.getValue(r,huyenCol)||'')+' (Huyện)');
+    }
 
-function getSug(dt){
-  const s = new Set();
-  for(let r=0;r<dt.getNumberOfRows();r++){
-    s.add((dt.getValue(r,0)||'')+' (Mã trạm)');
-    s.add((dt.getValue(r,1)||'')+' (Cụm)');
-    s.add((dt.getValue(r,2)||'')+' (Huyện)');
-  }
-  return Array.from(s);
+    if(key==='chung'){ dataChung=dt; drawTable(dt,'table_chung'); initAuto('search_chung',dt,sug,'table_chung',tramCol,cumCol,huyenCol,phoneCol,lapCol,tichhopCol); }
+    if(key==='calloff'){ dataCalloff=dt; drawTable(dt,'table_calloff'); initAuto('search_calloff',dt,sug,'table_calloff',tramCol,cumCol,huyenCol,phoneCol,lapCol,tichhopCol); }
+    if(key==='total'){ dataTotal=dt; drawTable(dt,'table_total'); setupFilterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol); updateTotalCount(dt,lapCol,tichhopCol); }
+  });
 }
 
 function drawTable(dt,div){
@@ -131,7 +137,7 @@ function drawTable(dt,div){
   });
 }
 
-function initAuto(inpId,dt,sug,tableDiv){
+function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol,phoneCol,lapCol,tichhopCol){
   const inp=document.getElementById(inpId);
   inp.addEventListener('input',function(){
     const val=this.value.toLowerCase();
@@ -148,28 +154,25 @@ function initAuto(inpId,dt,sug,tableDiv){
         item.classList.add('autocomplete-item');
         item.addEventListener('click',function(){
           let valText=this.innerText.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
-          let col=0;
-          if(this.innerText.includes('(Cụm)')) col=1;
-          else if(this.innerText.includes('(Huyện)')) col=2;
+          let col=tramCol;
+          if(this.innerText.includes('(Cụm)')) col=cumCol;
+          else if(this.innerText.includes('(Huyện)')) col=huyenCol;
+
           const f=new google.visualization.DataTable();
-          for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c),dt.getColumnLabel(c));
+          for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c), dt.getColumnLabel(c));
           for(let r=0;r<dt.getNumberOfRows();r++){
             if((dt.getValue(r,col)||'').toString().toLowerCase().includes(valText)){
-              const row=[];
-              for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c));
+              const row=[]; for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c));
               f.addRow(row);
             }
           }
 
-          // Phone link column
-          const phoneCol = f.getNumberOfColumns()-1;
           for(let r=0;r<f.getNumberOfRows();r++){
-            const val = f.getValue(r, phoneCol);
-            if(val && !val.includes('tel:')) f.setValue(r, phoneCol, `<a href="tel:${val}">${val}</a>`);
+            const v=f.getValue(r,phoneCol);
+            if(v && !v.includes('tel:')) f.setValue(r,phoneCol,`<a href="tel:${v}">${v}</a>`);
           }
 
           drawTable(f,tableDiv);
-          if(tableDiv==='table_total') updateTotalCount(f);
           inp.value='';
         });
         list.appendChild(item); count++;
@@ -180,51 +183,45 @@ function initAuto(inpId,dt,sug,tableDiv){
   document.addEventListener('click',e=>closeAllLists());
 }
 
-function setupFilterTotal(dt){
+function setupFilterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol){
   const hSet=new Set(), cSet=new Set();
-  for(let r=0;r<dt.getNumberOfRows();r++){ const h=dt.getValue(r,2)||''; const c=dt.getValue(r,1)||''; if(h) hSet.add(h); if(c) cSet.add(c);}
+  for(let r=0;r<dt.getNumberOfRows();r++){ const h=dt.getValue(r,huyenCol)||''; const c=dt.getValue(r,cumCol)||''; if(h) hSet.add(h); if(c) cSet.add(c);}
   const hS=document.getElementById('filter_huyen'), cS=document.getElementById('filter_cum'), tS=document.getElementById('filter_type');
   hS.innerHTML="<option value=''>Tất cả huyện</option>"; cS.innerHTML="<option value=''>Tất cả cụm</option>";
   hSet.forEach(h=>{const o=document.createElement('option'); o.value=h; o.text=h; hS.appendChild(o);});
   cSet.forEach(c=>{const o=document.createElement('option'); o.value=c; o.text=c; cS.appendChild(o);});
-  hS.onchange=filterTotal; cS.onchange=filterTotal; tS.onchange=filterTotal;
+  hS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol);
+  cS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol);
+  tS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol);
 }
 
-function filterTotal(){
+function filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol){
   const h=document.getElementById('filter_huyen').value.toLowerCase();
   const c=document.getElementById('filter_cum').value.toLowerCase();
   const type=document.getElementById('filter_type').value;
-  const dt=dataTotal; if(!dt) return;
   const f=new google.visualization.DataTable();
   for(let col=0;col<dt.getNumberOfColumns();col++) f.addColumn(dt.getColumnType(col), dt.getColumnLabel(col));
   for(let r=0;r<dt.getNumberOfRows();r++){
-    const rowH=(dt.getValue(r,2)||'').toLowerCase();
-    const rowC=(dt.getValue(r,1)||'').toLowerCase();
+    const rowH=(dt.getValue(r,huyenCol)||'').toLowerCase();
+    const rowC=(dt.getValue(r,cumCol)||'').toLowerCase();
     if((!h || rowH===h) && (!c || rowC===c)){
-      if(type==='lapdat' && dt.getValue(r,5)!=1) continue;
-      if(type==='tichhop' && dt.getValue(r,6)!=1) continue;
+      if(type==='lapdat' && dt.getValue(r,lapCol)!=1) continue;
+      if(type==='tichhop' && dt.getValue(r,tichhopCol)!=1) continue;
       const row=[]; for(let col=0;col<dt.getNumberOfColumns();col++) row.push(dt.getValue(r,col));
       f.addRow(row);
     }
   }
-  // Phone link column
-  const phoneCol = f.getNumberOfColumns()-1;
-  for(let r=0;r<f.getNumberOfRows();r++){
-    const val = f.getValue(r, phoneCol);
-    if(val && !val.includes('tel:')) f.setValue(r, phoneCol, `<a href="tel:${val}">${val}</a>`);
-  }
   drawTable(f,'table_total');
-  updateTotalCount(f);
+  updateTotalCount(f,lapCol,tichhopCol);
 }
 
-function updateTotalCount(dt){
-  let countLapDat=0, countTichHop=0;
-  const colLapDat=5; const colTichHop=6;
+function updateTotalCount(dt,lapCol,tichhopCol){
+  let lap=0, tichhop=0;
   for(let r=0;r<dt.getNumberOfRows();r++){
-    if(dt.getValue(r,colLapDat)==1) countLapDat++;
-    if(dt.getValue(r,colTichHop)==1) countTichHop++;
+    if(dt.getValue(r,lapCol)==1) lap++;
+    if(dt.getValue(r,tichhopCol)==1) tichhop++;
   }
-  document.getElementById('total_ok').innerText = `Trạm đã lắp đặt: ${countLapDat} | Trạm đã tích hợp: ${countTichHop}`;
+  document.getElementById('total_ok').innerText=`Tổng trạm đã lắp: ${lap} | Tổng trạm đã tích hợp: ${tichhop}`;
 }
 </script>
 </body>
