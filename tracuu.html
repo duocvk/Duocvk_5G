@@ -5,256 +5,169 @@
 <title>Tra cứu trạm 5G</title>
 <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 <style>
-body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
-h2 { margin-bottom: 10px; }
-.tabs { display: flex; margin-bottom: 10px; }
-.tab { padding: 10px 20px; cursor: pointer; background: #eee; margin-right: 5px; border-radius: 5px 5px 0 0; }
-.tab.active { background: #4285F4; color: white; font-weight: bold; }
-.tab-content { display: none; background: white; padding: 15px; border-radius: 0 5px 5px 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-.tab-content.active { display: block; }
-#autocomplete-list { border: 1px solid #d4d4d4; max-height: 150px; overflow-y: auto; position: absolute; background: white; z-index: 99; width: 100%; }
-.autocomplete-item { padding: 5px; cursor: pointer; }
-.autocomplete-item:hover { background-color: #e9e9e9; }
-#filter_div select { margin-right: 10px; padding: 5px; }
-#total_ok { margin: 10px 0; font-weight: bold; color: #333; }
+body { font-family: Arial, sans-serif; margin:20px; background:#f9f9f9; }
+h2 { margin-bottom:10px; }
+.tabs { display:flex; margin-bottom:10px; }
+.tab { padding:10px 20px; cursor:pointer; background:#eee; margin-right:5px; border-radius:5px 5px 0 0; }
+.tab.active { background:#4285F4; color:white; font-weight:bold; }
+.tab-content { display:none; background:white; padding:15px; border-radius:0 5px 5px 5px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+.tab-content.active { display:block; }
+#autocomplete-list { border:1px solid #d4d4d4; max-height:150px; overflow-y:auto; position:absolute; background:white; z-index:99; width:100%; }
+.autocomplete-item { padding:5px; cursor:pointer; }
+.autocomplete-item:hover { background:#e9e9e9; }
+#filter_div select { margin-right:10px; padding:5px; }
+#total_ok { margin:10px 0; font-weight:bold; color:#333; }
 </style>
-<script>
-google.charts.load('current', {'packages':['table']});
-
-let dataTables = {}; 
-let suggestions = {}; 
-
-const sheets = { 
-  "chung": "sheet",
-  "calloff": "calloff",
-  "total": "sheet"
-};
-
-document.addEventListener("DOMContentLoaded", function() {
-  initTabs();
-  initAutocomplete();
-  loadAllSheets();
-});
-
-function initTabs() {
-  const tabs = document.querySelectorAll(".tab");
-  tabs.forEach(tab => {
-    tab.addEventListener("click", function() {
-      tabs.forEach(t => t.classList.remove("active"));
-      this.classList.add("active");
-      const contents = document.querySelectorAll(".tab-content");
-      contents.forEach(c => c.classList.remove("active"));
-      document.getElementById(this.dataset.target).classList.add("active");
-    });
-  });
-}
-
-function loadAllSheets() {
-  for (const key in sheets) {
-    loadSheet(key, sheets[key]);
-  }
-}
-
-function loadSheet(key, sheetName) {
-  const query = new google.visualization.Query(
-    `https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=${sheetName}`
-  );
-  query.send(response => handleQueryResponse(response, key));
-}
-
-function handleQueryResponse(response, key) {
-  if (response.isError()) {
-    alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
-    return;
-  }
-  const dataTable = response.getDataTable();
-  dataTables[key] = dataTable;
-
-  const maTramSet = new Set();
-  const cumSet = new Set();
-  const huyenSet = new Set();
-  for (let r = 0; r < dataTable.getNumberOfRows(); r++) {
-    const maTram = (dataTable.getValue(r,0)||"").toString().trim();
-    const cum = (dataTable.getValue(r,1)||"").toString().trim();
-    const huyen = (dataTable.getValue(r,2)||"").toString().trim();
-    if(maTram) maTramSet.add(maTram + " (Mã trạm)");
-    if(cum) cumSet.add(cum + " (Cụm)");
-    if(huyen) huyenSet.add(huyen + " (Huyện)");
-  }
-  suggestions[key] = [...maTramSet, ...cumSet, ...huyenSet];
-
-  if(key==="chung"||key==="calloff") drawTable(key);
-  if(key==="total") setupTotalFilter();
-}
-
-function initAutocomplete() {
-  const inputs = document.querySelectorAll(".search-input");
-  inputs.forEach(inp => {
-    let currentFocus;
-    inp.addEventListener("input", function() {
-      const val = this.value.toLowerCase();
-      closeAllLists();
-      if(!val) return false;
-      const sheetKey = this.dataset.sheet;
-      const listDiv = document.createElement("DIV");
-      listDiv.setAttribute("id","autocomplete-list");
-      this.parentNode.appendChild(listDiv);
-      let count=0;
-      for(let i=0;i<suggestions[sheetKey].length && count<10;i++){
-        if(suggestions[sheetKey][i].toLowerCase().includes(val)){
-          const itemDiv=document.createElement("DIV");
-          itemDiv.innerHTML=suggestions[sheetKey][i];
-          itemDiv.classList.add("autocomplete-item");
-          itemDiv.addEventListener("click",function(){
-            inp.value=this.innerText;
-            closeAllLists();
-            let type=null;
-            if(this.innerText.includes("(Mã trạm)")) type="Mã trạm";
-            else if(this.innerText.includes("(Cụm)")) type="Cụm";
-            else if(this.innerText.includes("(Huyện)")) type="Huyện";
-            search(inp.value,type,sheetKey);
-          });
-          listDiv.appendChild(itemDiv);
-          count++;
-        }
-      }
-    });
-    inp.addEventListener("keydown",function(e){
-      let x=document.getElementById("autocomplete-list");
-      if(x) x=x.getElementsByTagName("div");
-      if(e.keyCode==40){ currentFocus++; addActive(x);}
-      else if(e.keyCode==38){ currentFocus--; addActive(x);}
-      else if(e.keyCode==13){ e.preventDefault(); if(currentFocus>-1 && x)x[currentFocus].click(); else search(inp.value,null,inp.dataset.sheet);}
-    });
-    function addActive(x){ if(!x) return false; removeActive(x); if(currentFocus>=x.length) currentFocus=0; if(currentFocus<0) currentFocus=x.length-1; x[currentFocus].classList.add("autocomplete-active");}
-    function removeActive(x){ for(let i=0;i<x.length;i++) x[i].classList.remove("autocomplete-active");}
-    function closeAllLists(elmnt){ const x=document.getElementsByClassName("autocomplete-item"); for(let i=x.length-1;i>=0;i--){ if(elmnt!=x[i] && elmnt!=inp) x[i].parentNode.remove();}}
-    document.addEventListener("click",function(e){ closeAllLists(e.target);});
-  });
-}
-
-function search(keyword=null,type=null,sheetKey){
-  if(!dataTables[sheetKey]) return;
-  const dataTable=dataTables[sheetKey];
-  let val=keyword?keyword.toLowerCase():"";
-  val=val.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,"");
-
-  const filtered=new google.visualization.DataTable();
-  for(let c=0;c<dataTable.getNumberOfColumns();c++) filtered.addColumn(dataTable.getColumnType(c),dataTable.getColumnLabel(c));
-
-  for(let r=0;r<dataTable.getNumberOfRows();r++){
-    let match=false;
-    const maTram=(dataTable.getValue(r,0)||"").toString().toLowerCase();
-    const cum=(dataTable.getValue(r,1)||"").toString().toLowerCase();
-    const huyen=(dataTable.getValue(r,2)||"").toString().toLowerCase();
-    if(type==="Mã trạm" && maTram.includes(val)) match=true;
-    else if(type==="Cụm" && cum.includes(val)) match=true;
-    else if(type==="Huyện" && huyen.includes(val)) match=true;
-    else if(!type && (maTram.includes(val)||cum.includes(val)||huyen.includes(val))) match=true;
-    if(match){
-      const row=[];
-      for(let c=0;c<dataTable.getNumberOfColumns();c++) row.push(dataTable.getValue(r,c));
-      filtered.addRow(row);
-    }
-  }
-  drawFilteredTable(filtered,sheetKey);
-}
-
-function drawTable(sheetKey){
-  if(!dataTables[sheetKey]) return;
-  const table=new google.visualization.Table(document.getElementById("table_"+sheetKey));
-  table.draw(dataTables[sheetKey],{showRowNumber:true,width:"100%",height:"100%"});
-}
-
-function drawFilteredTable(filtered,sheetKey){
-  const table=new google.visualization.Table(document.getElementById("table_"+sheetKey));
-  table.draw(filtered,{showRowNumber:true,width:"100%",height:"100%"});
-  if(sheetKey==="total") updateTotalCount(filtered);
-}
-
-// --- TOTAL TRẠM ---
-function setupTotalFilter(){
-  if(!dataTables["total"]) return;
-  const dt=dataTables["total"];
-  const huyenSet=new Set();
-  const cumSet=new Set();
-  for(let r=0;r<dt.getNumberOfRows();r++){
-    const huyen=(dt.getValue(r,2)||"").toString();
-    const cum=(dt.getValue(r,1)||"").toString();
-    if(huyen) huyenSet.add(huyen);
-    if(cum) cumSet.add(cum);
-  }
-  const huyenSelect=document.getElementById("filter_huyen");
-  const cumSelect=document.getElementById("filter_cum");
-  huyenSelect.innerHTML="<option value=''>Tất cả huyện</option>";
-  cumSelect.innerHTML="<option value=''>Tất cả cụm</option>";
-  huyenSet.forEach(h=>{ const opt=document.createElement("option"); opt.value=h; opt.text=h; huyenSelect.appendChild(opt);});
-  cumSet.forEach(c=>{ const opt=document.createElement("option"); opt.value=c; opt.text=c; cumSelect.appendChild(opt);});
-}
-
-function filterTotal(){
-  const huyen=document.getElementById("filter_huyen").value.toLowerCase();
-  const cum=document.getElementById("filter_cum").value.toLowerCase();
-  if(!dataTables["total"]) return;
-  const dt=dataTables["total"];
-  const filtered=new google.visualization.DataTable();
-  for(let c=0;c<dt.getNumberOfColumns();c++) filtered.addColumn(dt.getColumnType(c),dt.getColumnLabel(c));
-  for(let r=0;r<dt.getNumberOfRows();r++){
-    const rowHuyen=(dt.getValue(r,2)||"").toString().toLowerCase();
-    const rowCum=(dt.getValue(r,1)||"").toString().toLowerCase();
-    if((!huyen||rowHuyen===huyen) && (!cum||rowCum===cum)){
-      const row=[]; for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c)); filtered.addRow(row);
-    }
-  }
-  drawFilteredTable(filtered,"total");
-}
-
-function updateTotalCount(filtered){
-  let count=0;
-  const statusCol=3; // cột trạng thái (ví dụ cột 3)
-  for(let r=0;r<filtered.getNumberOfRows();r++){
-    const status=(filtered.getValue(r,statusCol)||"").toString().toLowerCase();
-    if(status==="ok") count++;
-  }
-  document.getElementById("total_ok").innerText="Tổng trạm OK: "+count;
-}
-</script>
 </head>
 <body>
 <h2>Tra cứu trạm 5G</h2>
+
 <div class="tabs">
   <div class="tab active" data-target="tab_chung">Tra cứu chung</div>
   <div class="tab" data-target="tab_calloff">Tra cứu Calloff</div>
   <div class="tab" data-target="tab_total">Tổng trạm đã lắp</div>
 </div>
 
-<!-- Tab Chung -->
 <div class="tab-content active" id="tab_chung">
-  <div style="position: relative; width: 300px;">
-    <input type="text" id="search_chung" class="search-input" placeholder="Nhập mã trạm, cụm hoặc huyện" data-sheet="chung">
+  <div style="position:relative; width:300px;">
+    <input type="text" id="search_chung" placeholder="Nhập mã trạm, cụm hoặc huyện">
   </div>
-  <div style="margin-top:10px;"><button onclick="search(null,null,'chung')">Tra cứu</button></div>
   <div id="table_chung" style="margin-top:20px;"></div>
 </div>
 
-<!-- Tab Calloff -->
 <div class="tab-content" id="tab_calloff">
-  <div style="position: relative; width: 300px;">
-    <input type="text" id="search_calloff" class="search-input" placeholder="Nhập mã trạm, cụm hoặc huyện" data-sheet="calloff">
+  <div style="position:relative; width:300px;">
+    <input type="text" id="search_calloff" placeholder="Nhập mã trạm, cụm hoặc huyện">
   </div>
-  <div style="margin-top:10px;"><button onclick="search(null,null,'calloff')">Tra cứu</button></div>
   <div id="table_calloff" style="margin-top:20px;"></div>
 </div>
 
-<!-- Tab Tổng trạm -->
 <div class="tab-content" id="tab_total">
   <div id="filter_div">
-    <select id="filter_huyen" onchange="filterTotal()"></select>
-    <select id="filter_cum" onchange="filterTotal()"></select>
+    <select id="filter_huyen"></select>
+    <select id="filter_cum"></select>
   </div>
   <div id="total_ok"></div>
   <div id="table_total" style="margin-top:20px;"></div>
 </div>
 
+<script>
+google.charts.load('current', {'packages':['table']});
+google.charts.setOnLoadCallback(initApp);
+
+let dataChung, dataCalloff, dataTotal;
+let sugChung=[], sugCalloff=[], sugTotal=[];
+
+// --- INIT ---
+function initApp(){
+  initTabs();
+  loadSheet('sheet', 'chung');
+  loadSheet('calloff','calloff');
+  loadSheet('sheet','total', true);
+}
+
+// --- TABS ---
+function initTabs(){
+  const tabs=document.querySelectorAll('.tab');
+  tabs.forEach(tab=>{
+    tab.addEventListener('click', function(){
+      tabs.forEach(t=>t.classList.remove('active'));
+      this.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+      document.getElementById(this.dataset.target).classList.add('active');
+    });
+  });
+}
+
+// --- LOAD SHEET ---
+function loadSheet(sheetName,key,isTotal=false){
+  const query = new google.visualization.Query(`https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=${sheetName}`);
+  query.send(resp=>{
+    if(resp.isError()){ alert(resp.getMessage()); return; }
+    const dt = resp.getDataTable();
+    if(key==='chung'){ dataChung=dt; sugChung=getSug(dt); drawTable(dt,'table_chung'); initAuto('search_chung',dt,sugChung); }
+    if(key==='calloff'){ dataCalloff=dt; sugCalloff=getSug(dt); drawTable(dt,'table_calloff'); initAuto('search_calloff',dt,sugCalloff); }
+    if(key==='total'){ dataTotal=dt; sugTotal=getSug(dt); drawTable(dt,'table_total'); setupFilterTotal(dt); updateTotalCount(dt); }
+  });
+}
+
+function getSug(dt){
+  const s = new Set();
+  for(let r=0;r<dt.getNumberOfRows();r++){
+    s.add((dt.getValue(r,0)||'')+' (Mã trạm)');
+    s.add((dt.getValue(r,1)||'')+' (Cụm)');
+    s.add((dt.getValue(r,2)||'')+' (Huyện)');
+  }
+  return Array.from(s);
+}
+
+function drawTable(dt,div){ new google.visualization.Table(document.getElementById(div)).draw(dt,{showRowNumber:true,width:'100%',height:'100%'}); }
+
+// --- AUTOCOMPLETE ---
+function initAuto(inpId,dt,sug){
+  const inp=document.getElementById(inpId);
+  inp.addEventListener('input',function(){
+    const val=this.value.toLowerCase();
+    closeAllLists();
+    if(!val) return;
+    const list=document.createElement('DIV');
+    list.setAttribute('id','autocomplete-list');
+    this.parentNode.appendChild(list);
+    let count=0;
+    for(let i=0;i<sug.length&&count<10;i++){
+      if(sug[i].toLowerCase().includes(val)){
+        const item=document.createElement('DIV');
+        item.innerHTML=sug[i];
+        item.classList.add('autocomplete-item');
+        item.addEventListener('click',function(){
+          inp.value=this.innerText; closeAllLists(); searchVal(inp.value,dt,divIdByInput(inpId));
+        });
+        list.appendChild(item); count++;
+      }
+    }
+  });
+  function closeAllLists(){ const x=document.getElementsByClassName('autocomplete-item'); for(let i=x.length-1;i>=0;i--) x[i].parentNode.remove(); }
+  document.addEventListener('click',e=>closeAllLists());
+}
+
+// --- SEARCH ---
+function divIdByInput(id){ return id==='search_chung'?'table_chung':id==='search_calloff'?'table_calloff':'table_total'; }
+function searchVal(val,dt,div){ val=val.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
+  const f=new google.visualization.DataTable();
+  for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c),dt.getColumnLabel(c));
+  for(let r=0;r<dt.getNumberOfRows();r++){
+    const ma=(dt.getValue(r,0)||'').toLowerCase();
+    const cum=(dt.getValue(r,1)||'').toLowerCase();
+    const huyen=(dt.getValue(r,2)||'').toLowerCase();
+    if(ma.includes(val)||cum.includes(val)||huyen.includes(val)){ const row=[]; for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c)); f.addRow(row);}
+  }
+  drawTable(f,div);
+  if(div==='table_total') updateTotalCount(f);
+}
+
+// --- TOTAL ---
+function setupFilterTotal(dt){
+  const hSet=new Set(), cSet=new Set();
+  for(let r=0;r<dt.getNumberOfRows();r++){ const h=dt.getValue(r,2)||''; const c=dt.getValue(r,1)||''; if(h) hSet.add(h); if(c) cSet.add(c);}
+  const hS=document.getElementById('filter_huyen'), cS=document.getElementById('filter_cum');
+  hS.innerHTML="<option value=''>Tất cả huyện</option>"; cS.innerHTML="<option value=''>Tất cả cụm</option>";
+  hSet.forEach(h=>{const o=document.createElement('option'); o.value=h; o.text=h; hS.appendChild(o);});
+  cSet.forEach(c=>{const o=document.createElement('option'); o.value=c; o.text=c; cS.appendChild(o);});
+  hS.onchange=filterTotal; cS.onchange=filterTotal;
+}
+function filterTotal(){
+  const h=document.getElementById('filter_huyen').value.toLowerCase();
+  const c=document.getElementById('filter_cum').value.toLowerCase();
+  const dt=dataTotal; if(!dt) return;
+  const f=new google.visualization.DataTable();
+  for(let col=0;col<dt.getNumberOfColumns();col++) f.addColumn(dt.getColumnType(col),dt.getColumnLabel(col));
+  for(let r=0;r<dt.getNumberOfRows();r++){
+    const rowH=(dt.getValue(r,2)||'').toLowerCase(); const rowC=(dt.getValue(r,1)||'').toLowerCase();
+    if((!h||rowH===h)&&(!c||rowC===c)){ const row=[]; for(let col=0;col<dt.getNumberOfColumns();col++) row.push(dt.getValue(r,col)); f.addRow(row);}
+  }
+  drawTable(f,'table_total'); updateTotalCount(f);
+}
+function updateTotalCount(dt){ let cnt=0; const colStatus=3; for(let r=0;r<dt.getNumberOfRows();r++){ const v=(dt.getValue(r,colStatus)||'').toLowerCase(); if(v==='ok') cnt++;} document.getElementById('total_ok').innerText='Tổng trạm OK: '+cnt;}
+</script>
 </body>
 </html>
