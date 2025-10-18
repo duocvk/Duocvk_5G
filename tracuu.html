@@ -55,6 +55,7 @@ h2 { margin-bottom:10px; }
   <div id="total_ok"></div>
   <div id="table_total" style="margin-top:20px;"></div>
 </div>
+
 <script>
 google.charts.load('current', {'packages':['table']});
 google.charts.setOnLoadCallback(initApp);
@@ -80,7 +81,9 @@ function initTabs(){
 }
 
 function loadSheet(sheetName,key,isTotal=false){
-  const query=new google.visualization.Query(`https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=${sheetName}`);
+  const query=new google.visualization.Query(
+    `https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=${sheetName}&headers=1`
+  );
   query.send(resp=>{
     if(resp.isError()){ alert(resp.getMessage()); return; }
     const dt=resp.getDataTable();
@@ -122,7 +125,8 @@ function drawTable(dt,div){
     showRowNumber:true,width:'100%',height:'100%',allowHtml:true,page:'enable',pageSize:20
   });
 }
-  function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol,phoneCol,lapCol,tichhopCol){
+
+function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol,phoneCol,lapCol,tichhopCol){
   const inp=document.getElementById(inpId);
   inp.addEventListener('input',function(){
     const val=this.value.toLowerCase(); closeAllLists();
