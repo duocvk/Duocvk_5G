@@ -34,7 +34,6 @@ h2 { margin-bottom:10px; }
   <div class="tab" data-target="tab_total">Tổng trạm đã lắp</div>
 </div>
 
-<!-- Tra cứu chung -->
 <div class="tab-content active" id="tab_chung">
   <div style="position:relative; width:300px;">
     <input type="text" id="search_chung" placeholder="Nhập mã trạm, cụm hoặc huyện">
@@ -42,7 +41,6 @@ h2 { margin-bottom:10px; }
   <div id="table_chung" style="margin-top:20px;"></div>
 </div>
 
-<!-- Tra cứu Calloff -->
 <div class="tab-content" id="tab_calloff">
   <div style="position:relative; width:300px;">
     <input type="text" id="search_calloff" placeholder="Nhập mã trạm, cụm hoặc huyện">
@@ -50,7 +48,6 @@ h2 { margin-bottom:10px; }
   <div id="table_calloff" style="margin-top:20px;"></div>
 </div>
 
-<!-- Tổng trạm -->
 <div class="tab-content" id="tab_total">
   <div id="filter_div">
     <select id="filter_huyen"></select>
@@ -72,7 +69,6 @@ google.charts.setOnLoadCallback(initApp);
 let dataChung, dataCalloff, dataTotal;
 let sugChung=[], sugCalloff=[], sugTotal=[];
 
-// --- INIT ---
 function initApp(){
   initTabs();
   loadSheet('sheet', 'chung');
@@ -80,7 +76,6 @@ function initApp(){
   loadSheet('sheet','total', true);
 }
 
-// --- TABS ---
 function initTabs(){
   const tabs=document.querySelectorAll('.tab');
   tabs.forEach(tab=>{
@@ -93,7 +88,6 @@ function initTabs(){
   });
 }
 
-// --- LOAD SHEET ---
 function loadSheet(sheetName,key,isTotal=false){
   const query = new google.visualization.Query(
     `https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=${sheetName}`
@@ -102,10 +96,17 @@ function loadSheet(sheetName,key,isTotal=false){
     if(resp.isError()){ alert(resp.getMessage()); return; }
     const dt = resp.getDataTable();
 
-    // Wrap header text
+    // Wrap header
     for(let c=0;c<dt.getNumberOfColumns();c++){
       const label = dt.getColumnLabel(c);
       dt.setColumnLabel(c,'<div style="white-space:normal;">'+label+'</div>');
+    }
+
+    // Phone link column
+    const phoneCol = dt.getNumberOfColumns()-1;
+    for(let r=0;r<dt.getNumberOfRows();r++){
+      const val = dt.getValue(r, phoneCol);
+      if(val) dt.setValue(r, phoneCol, `<a href="tel:${val}">${val}</a>`);
     }
 
     if(key==='chung'){ dataChung=dt; sugChung=getSug(dt); drawTable(dt,'table_chung'); initAuto('search_chung',dt,sugChung,'table_chung'); }
@@ -124,9 +125,12 @@ function getSug(dt){
   return Array.from(s);
 }
 
-function drawTable(dt,div){ new google.visualization.Table(document.getElementById(div)).draw(dt,{showRowNumber:true,width:'100%',height:'100%',allowHtml:true,page:'enable',pageSize:20}); }
+function drawTable(dt,div){
+  new google.visualization.Table(document.getElementById(div)).draw(dt,{
+    showRowNumber:true,width:'100%',height:'100%',allowHtml:true,page:'enable',pageSize:20
+  });
+}
 
-// --- AUTOCOMPLETE ---
 function initAuto(inpId,dt,sug,tableDiv){
   const inp=document.getElementById(inpId);
   inp.addEventListener('input',function(){
@@ -143,24 +147,29 @@ function initAuto(inpId,dt,sug,tableDiv){
         item.innerHTML=sug[i];
         item.classList.add('autocomplete-item');
         item.addEventListener('click',function(){
-          let valText = this.innerText.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
-          let col = 0;
-          if(this.innerText.includes('(Cụm)')) col = 1;
-          else if(this.innerText.includes('(Huyện)')) col = 2;
-
-          const f = new google.visualization.DataTable();
-          for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c), dt.getColumnLabel(c));
+          let valText=this.innerText.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
+          let col=0;
+          if(this.innerText.includes('(Cụm)')) col=1;
+          else if(this.innerText.includes('(Huyện)')) col=2;
+          const f=new google.visualization.DataTable();
+          for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c),dt.getColumnLabel(c));
           for(let r=0;r<dt.getNumberOfRows();r++){
-              if((dt.getValue(r,col)||'').toString().toLowerCase().includes(valText)){
-                  const row = [];
-                  for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c));
-                  f.addRow(row);
-              }
+            if((dt.getValue(r,col)||'').toString().toLowerCase().includes(valText)){
+              const row=[];
+              for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c));
+              f.addRow(row);
+            }
           }
+
+          // Phone link column
+          const phoneCol = f.getNumberOfColumns()-1;
+          for(let r=0;r<f.getNumberOfRows();r++){
+            const val = f.getValue(r, phoneCol);
+            if(val && !val.includes('tel:')) f.setValue(r, phoneCol, `<a href="tel:${val}">${val}</a>`);
+          }
+
           drawTable(f,tableDiv);
           if(tableDiv==='table_total') updateTotalCount(f);
-
-          // XÓA INPUT SAU KHI CHỌN
           inp.value='';
         });
         list.appendChild(item); count++;
@@ -171,7 +180,6 @@ function initAuto(inpId,dt,sug,tableDiv){
   document.addEventListener('click',e=>closeAllLists());
 }
 
-// --- TOTAL TAB ---
 function setupFilterTotal(dt){
   const hSet=new Set(), cSet=new Set();
   for(let r=0;r<dt.getNumberOfRows();r++){ const h=dt.getValue(r,2)||''; const c=dt.getValue(r,1)||''; if(h) hSet.add(h); if(c) cSet.add(c);}
@@ -187,36 +195,36 @@ function filterTotal(){
   const c=document.getElementById('filter_cum').value.toLowerCase();
   const type=document.getElementById('filter_type').value;
   const dt=dataTotal; if(!dt) return;
-
   const f=new google.visualization.DataTable();
   for(let col=0;col<dt.getNumberOfColumns();col++) f.addColumn(dt.getColumnType(col), dt.getColumnLabel(col));
-
   for(let r=0;r<dt.getNumberOfRows();r++){
     const rowH=(dt.getValue(r,2)||'').toLowerCase();
     const rowC=(dt.getValue(r,1)||'').toLowerCase();
-
     if((!h || rowH===h) && (!c || rowC===c)){
       if(type==='lapdat' && dt.getValue(r,5)!=1) continue;
       if(type==='tichhop' && dt.getValue(r,6)!=1) continue;
-
       const row=[]; for(let col=0;col<dt.getNumberOfColumns();col++) row.push(dt.getValue(r,col));
       f.addRow(row);
     }
+  }
+  // Phone link column
+  const phoneCol = f.getNumberOfColumns()-1;
+  for(let r=0;r<f.getNumberOfRows();r++){
+    const val = f.getValue(r, phoneCol);
+    if(val && !val.includes('tel:')) f.setValue(r, phoneCol, `<a href="tel:${val}">${val}</a>`);
   }
   drawTable(f,'table_total');
   updateTotalCount(f);
 }
 
 function updateTotalCount(dt){
-  let countLapDat = 0, countTichHop = 0;
-  const colLapDat = 5; // F
-  const colTichHop = 6; // G
+  let countLapDat=0, countTichHop=0;
+  const colLapDat=5; const colTichHop=6;
   for(let r=0;r<dt.getNumberOfRows();r++){
     if(dt.getValue(r,colLapDat)==1) countLapDat++;
     if(dt.getValue(r,colTichHop)==1) countTichHop++;
   }
-  document.getElementById('total_ok').innerText =
-    "Trạm đã lắp đặt: "+countLapDat+" | Trạm đã tích hợp: "+countTichHop;
+  document.getElementById('total_ok').innerText = `Trạm đã lắp đặt: ${countLapDat} | Trạm đã tích hợp: ${countTichHop}`;
 }
 </script>
 </body>
