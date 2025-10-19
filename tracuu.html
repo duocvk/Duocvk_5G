@@ -1,162 +1,331 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="utf-8" />
-<title>Tra cứu trạm 5G</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<script src="https://www.gstatic.com/charts/loader.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<style>
-  :root{--blue:#0078d7;--mapLink:#1a73e8;--green:#d1eaff;--yellow:#fff6a3}
-  body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f5f7fb;color:#222}
-  header{background:var(--blue);color:#fff;padding:12px 18px;text-align:center;font-weight:700}
-  .wrap{max-width:1200px;margin:16px auto;padding:0 12px}
-  .card{background:#fff;border-radius:8px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,0.06)}
-  nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-  nav button{padding:8px 14px;border-radius:6px;border:1px solid #e6e9ef;background:#fff;cursor:pointer}
-  nav button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
-  input[type=text],select{padding:8px;border-radius:6px;border:1px solid #ccc;font-size:14px}
-  #suggestions,#suggestionsCalloff{position:absolute;background:#fff;border:1px solid #ddd;border-radius:6px;max-height:220px;overflow:auto;z-index:999;width:320px}
-  #suggestions div,#suggestionsCalloff div{padding:8px;cursor:pointer}
-  #suggestions div:hover,#suggestionsCalloff div:hover{background:#eef8ff}
-  tr.row-installed{background:var(--yellow)!important}
-  tr.row-integrated{background:var(--green)!important}
-  .small-btn{padding:6px 10px;border-radius:6px;background:#2f80ed;color:#fff;border:none;cursor:pointer}
-  .ghost{background:#fff;color:var(--blue);border:1px solid #cfd8e3}
-  .modal-backdrop{position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:2000}
-  .modal{background:#fff;padding:18px;border-radius:8px;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,0.25)}
-  .modal input{width:100%;margin:6px 0;padding:8px;border:1px solid #ccc;border-radius:6px}
-  .modal button{margin-top:8px;padding:8px 12px;border-radius:6px;background:var(--blue);color:#fff;border:none}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tra cứu Trạm 5G</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f8fafc;
+      color: #333;
+    }
+    header {
+      background: #007bff;
+      color: #fff;
+      text-align: center;
+      padding: 12px 0;
+      font-size: 20px;
+      font-weight: bold;
+      position: relative;
+    }
+    .logout {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      background: #fff;
+      color: #007bff;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      background: #e9ecef;
+      border-bottom: 2px solid #007bff;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+    .tab.active {
+      background: #007bff;
+      color: white;
+      border-radius: 10px 10px 0 0;
+    }
+    .content {
+      display: none;
+      padding: 20px;
+      background: white;
+    }
+    .content.active {
+      display: block;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px;
+      text-align: left;
+    }
+    th {
+      background: #007bff;
+      color: white;
+    }
+    tr:nth-child(even) { background: #f2f2f2; }
+    tr.highlight-installed { background: #fff6a3 !important; }
+    tr.highlight-integrated { background: #d1eaff !important; }
+    .filters select {
+      margin: 5px;
+      padding: 5px;
+    }
+    /* Login Popup */
+    #loginPopup {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    #loginBox {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 280px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    #loginBox input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+    }
+    #loginBox button {
+      width: 100%;
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-<header>TRA CỨU TRẠM 5G</header>
-
-<div class="wrap">
-  <div id="appArea" class="card" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <nav>
-        <button id="btnChung" class="active" onclick="showTab('chung', this)">Tra cứu chung</button>
-        <button id="btnCalloff" onclick="showTab('calloff', this)">Tra cứu Calloff</button>
-        <button id="btnTong" onclick="showTab('tong', this)">Tổng hợp</button>
-      </nav>
-      <div><button class="ghost" onclick="logout()">Đăng xuất</button></div>
-    </div>
-
-    <div id="tab-chung">
-      <h3>Tra cứu chung</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:relative">
-        <input id="inputChung" type="text" placeholder="Tìm mã trạm, cụm, huyện..." style="width:320px" />
-        <div id="suggestions"></div>
-        <select id="drop_huyen_chung"><option value="">--Huyện--</option></select>
-        <select id="drop_cum_chung"><option value="">--Cụm--</option></select>
-        <select id="drop_tram_chung"><option value="">--Trạm--</option></select>
-        <button class="small-btn" onclick="resetChung()">Reset</button>
-      </div>
-      <div id="table_chung" style="margin-top:12px"></div>
-    </div>
-
-    <div id="tab-calloff" style="display:none">
-      <h3>Tra cứu Calloff</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:relative">
-        <select id="drop_tram_calloff"><option value="">--Trạm (A)--</option></select>
-        <select id="drop_huyen_calloff"><option value="">--Huyện (Q)--</option></select>
-        <input id="inputCalloff" type="text" placeholder="Tìm trạm trong Calloff..." style="width:320px" />
-        <div id="suggestionsCalloff"></div>
-        <button class="small-btn" onclick="resetCalloff()">Reset</button>
-      </div>
-      <div id="table_calloff" style="margin-top:12px"></div>
-    </div>
-
-    <div id="tab-tong" style="display:none">
-      <h3>Tổng hợp</h3>
-      <div id="summaryArea"></div>
+  <div id="loginPopup">
+    <div id="loginBox">
+      <h3>Đăng nhập</h3>
+      <input type="text" id="username" placeholder="Tài khoản">
+      <input type="password" id="password" placeholder="Mật khẩu">
+      <button onclick="login()">Đăng nhập</button>
     </div>
   </div>
-</div>
 
-<div id="loginModal" class="modal-backdrop" style="display:none">
-  <div class="modal">
-    <h3>Đăng nhập</h3>
-    <input id="login_user" type="text" placeholder="Tên đăng nhập" />
-    <input id="login_pass" type="password" placeholder="Mật khẩu" />
-    <button onclick="loginSubmit()">Đăng nhập</button>
-    <p id="loginError" style="color:#c0392b"></p>
+  <header>
+    Tra cứu Trạm 5G
+    <button class="logout" onclick="logout()">Đăng xuất</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('chung')">Tra cứu chung</button>
+    <button class="tab" onclick="showTab('calloff')">Calloff</button>
+    <button class="tab" onclick="showTab('tonghop')">Tổng hợp</button>
   </div>
-</div>
 
-<script>
-google.charts.load('current', {'packages':['table']});
-const SHEET_ID = '1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8';
-const URL_SHEET = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=sheet&headers=1`;
-const URL_CALLOFF = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=calloff&headers=1`;
+  <div id="chung" class="content active">
+    <div class="filters">
+      <select id="filterHuyen"></select>
+      <select id="filterCum"></select>
+      <select id="filterTram"></select>
+    </div>
+    <div id="tableChung"></div>
+  </div>
 
-let sheetDT=null, calloffDT=null;
+  <div id="calloff" class="content">
+    <div class="filters">
+      <select id="filterCalloffTram"></select>
+      <select id="filterCalloffHuyen"></select>
+    </div>
+    <div id="tableCalloff"></div>
+  </div>
 
-window.onload = ()=>{
-  if(localStorage.getItem('tc_logged')==='1'){
-    $('#appArea').show();
-    google.charts.setOnLoadCallback(initApp);
-  }else $('#loginModal').show();
-};
+  <div id="tonghop" class="content">
+    <div>
+      <button onclick="renderTongHop('huyen')">Theo Huyện</button>
+      <button onclick="renderTongHop('cum')">Theo Cụm</button>
+    </div>
+    <div id="tableTongHop"></div>
+  </div>
 
-function loginSubmit(){
-  const u=$('#login_user').val(), p=$('#login_pass').val();
-  if(u==='admin'&&p==='123456'){
-    localStorage.setItem('tc_logged','1');
-    $('#loginModal').hide(); $('#appArea').show();
-    google.charts.setOnLoadCallback(initApp);
-  }else $('#loginError').text('Sai tên đăng nhập hoặc mật khẩu');
-}
-function logout(){localStorage.removeItem('tc_logged');location.reload();}
+  <script>
+    const SHEET_ID = "1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8";
+    const SHEET_MAIN = "sheet";
+    const SHEET_CALLOFF = "calloff";
 
-function initApp(){
-  loadSheet(URL_SHEET, dt=>{
-    sheetDT=dt; renderChung(dt);
-  });
-  loadSheet(URL_CALLOFF, dt=>{
-    calloffDT=dt; renderCalloff(dt);
-  });
-}
+    async function fetchSheet(sheetName) {
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheetName}`;
+      const res = await fetch(url);
+      const text = await res.text();
+      const json = JSON.parse(text.substring(47, text.length - 2));
+      return json.table.rows.map(r => r.c ? r.c.map(c => c ? c.v : "") : []);
+    }
 
-function loadSheet(url,cb){
-  const q=new google.visualization.Query(url);
-  q.send(r=>{
-    if(r.isError()){alert('Lỗi tải dữ liệu');return;}
-    cb(r.getDataTable());
-  });
-}
+    // Login
+    function login() {
+      const u = document.getElementById("username").value.trim();
+      const p = document.getElementById("password").value.trim();
+      if (u === "admin" && p === "123456") {
+        localStorage.setItem("loggedIn", "true");
+        document.getElementById("loginPopup").style.display = "none";
+      } else {
+        alert("Sai tài khoản hoặc mật khẩu!");
+      }
+    }
+    function logout() {
+      localStorage.removeItem("loggedIn");
+      location.reload();
+    }
+    window.onload = () => {
+      if (localStorage.getItem("loggedIn") === "true") {
+        document.getElementById("loginPopup").style.display = "none";
+        init();
+      }
+    };
 
-function renderChung(dt){
-  populateDropdown(dt,0,'#drop_huyen_chung');
-  populateDropdown(dt,1,'#drop_cum_chung');
-  populateDropdown(dt,2,'#drop_tram_chung');
-  drawTable(dt,'table_chung');
-}
-function renderCalloff(dt){
-  populateDropdown(dt,0,'#drop_tram_calloff');
-  populateDropdown(dt,16,'#drop_huyen_calloff');
-  drawTable(dt,'table_calloff');
-}
-function populateDropdown(dt,col,sel){
-  const s=new Set();
-  for(let i=0;i<dt.getNumberOfRows();i++){
-    const v=dt.getValue(i,col); if(v) s.add(v);
-  }
-  const el=$(sel); el.empty().append('<option value="">--Chọn--</option>');
-  Array.from(s).sort().forEach(v=>el.append(`<option>${v}</option>`));
-}
-function drawTable(dt,container){
-  const t=new google.visualization.Table(document.getElementById(container));
-  t.draw(dt,{showRowNumber:true,width:'100%',page:'enable',pageSize:20});
-}
-function resetChung(){if(sheetDT)drawTable(sheetDT,'table_chung');}
-function resetCalloff(){if(calloffDT)drawTable(calloffDT,'table_calloff');}
-function showTab(tab,btn){
-  $('nav button').removeClass('active');$(btn).addClass('active');
-  $('#tab-chung,#tab-calloff,#tab-tong').hide();
-  $(`#tab-${tab}`).show();
-}
-</script>
+    // Tabs
+    function showTab(id) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".content").forEach(c => c.classList.remove("active"));
+      document.querySelector(`.tab[onclick="showTab('${id}')"]`).classList.add("active");
+      document.getElementById(id).classList.add("active");
+    }
+
+    async function init() {
+      const dataMain = await fetchSheet(SHEET_MAIN);
+      const dataCalloff = await fetchSheet(SHEET_CALLOFF);
+      renderChung(dataMain);
+      renderCalloff(dataCalloff);
+      renderTongHop("huyen", dataMain);
+    }
+
+    // --- Tra cứu chung ---
+    function renderChung(data) {
+      const headers = data[0];
+      const body = data.slice(1);
+      const huyenList = [...new Set(body.map(r => r[0]))];
+      const cumList = [...new Set(body.map(r => r[1]))];
+      const tramList = [...new Set(body.map(r => r[2]))];
+      fillSelect("filterHuyen", huyenList, "Chọn Huyện");
+      fillSelect("filterCum", cumList, "Chọn Cụm");
+      fillSelect("filterTram", tramList, "Chọn Trạm");
+
+      function filter() {
+        const h = document.getElementById("filterHuyen").value;
+        const c = document.getElementById("filterCum").value;
+        const t = document.getElementById("filterTram").value;
+        let filtered = body;
+        if (h) filtered = filtered.filter(r => r[0] === h);
+        if (c) filtered = filtered.filter(r => r[1] === c);
+        if (t) filtered = filtered.filter(r => r[2] === t);
+        draw(filtered);
+      }
+
+      document.querySelectorAll("#filterHuyen, #filterCum, #filterTram").forEach(el => {
+        el.onchange = filter;
+      });
+
+      function draw(rows) {
+        let html = "<table><tr>";
+        headers.forEach(h => { html += `<th>${h}</th>` });
+        html += "<th>Bản đồ</th></tr>";
+        rows.forEach(r => {
+          const lat = r[9], long = r[10];
+          let trClass = "";
+          if (r[5] === 1 && r[6] != 1) trClass = "highlight-installed";
+          if (r[5] === 1 && r[6] === 1) trClass = "highlight-integrated";
+          html += `<tr class="${trClass}">`;
+          r.forEach((cell, i) => {
+            if (i !== 9 && i !== 10) html += `<td>${cell}</td>`;
+          });
+          if (lat && long)
+            html += `<td><a target="_blank" href="https://www.google.com/maps?q=${lat},${long}">Xem</a></td>`;
+          else html += "<td></td>";
+          html += "</tr>";
+        });
+        html += "</table>";
+        document.getElementById("tableChung").innerHTML = html;
+      }
+
+      draw(body);
+    }
+
+    // --- Calloff ---
+    function renderCalloff(data) {
+      const headers = data[0];
+      const body = data.slice(1);
+      const tramList = [...new Set(body.map(r => r[0]))];
+      const huyenList = [...new Set(body.map(r => r[16]))];
+      fillSelect("filterCalloffTram", tramList, "Chọn trạm");
+      fillSelect("filterCalloffHuyen", huyenList, "Chọn huyện");
+
+      function filter() {
+        const t = document.getElementById("filterCalloffTram").value;
+        const h = document.getElementById("filterCalloffHuyen").value;
+        let filtered = body;
+        if (t) filtered = filtered.filter(r => r[0] === t);
+        if (h) filtered = filtered.filter(r => r[16] === h);
+        draw(filtered);
+      }
+
+      document.querySelectorAll("#filterCalloffTram, #filterCalloffHuyen").forEach(el => {
+        el.onchange = filter;
+      });
+
+      function draw(rows) {
+        let html = "<table><tr>";
+        headers.forEach(h => html += `<th>${h}</th>`);
+        html += "</tr>";
+        rows.forEach(r => {
+          html += "<tr>";
+          r.forEach(cell => html += `<td>${cell}</td>`);
+          html += "</tr>";
+        });
+        html += "</table>";
+        document.getElementById("tableCalloff").innerHTML = html;
+      }
+      draw(body);
+    }
+
+    // --- Tổng hợp ---
+    function renderTongHop(mode, data) {
+      if (!data) return;
+      const headers = data[0];
+      const body = data.slice(1);
+      const idx = mode === "huyen" ? 0 : 1;
+      const groups = {};
+      body.forEach(r => {
+        const key = r[idx];
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(r);
+      });
+      let html = "<table><tr><th>" + (mode === "huyen" ? "Huyện" : "Cụm") + "</th><th>Tổng trạm</th><th>Đã lắp</th><th>Đã tích hợp</th></tr>";
+      for (const key in groups) {
+        const rows = groups[key];
+        const tong = rows.length;
+        const lap = rows.filter(r => r[5] === 1).length;
+        const tich = rows.filter(r => r[6] === 1).length;
+        html += `<tr><td>${key}</td><td>${tong}</td><td>${lap}</td><td>${tich}</td></tr>`;
+      }
+      html += "</table>";
+      document.getElementById("tableTongHop").innerHTML = html;
+    }
+
+    function fillSelect(id, arr, first) {
+      const el = document.getElementById(id);
+      el.innerHTML = `<option value="">${first}</option>` + arr.map(a => `<option>${a}</option>`).join("");
+    }
+  </script>
 </body>
 </html>
