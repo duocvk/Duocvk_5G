@@ -1,503 +1,281 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
 <title>Tra cứu trạm 5G</title>
-<link rel="preconnect" href="https://fonts.gstatic.com">
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-  :root{
-    --bg:#f4f7fb;
-    --card:#ffffff;
-    --primary:#0066cc;
-    --muted:#7a8aa6;
-    --accent-light:#dff3ff;
-    --installed:#fff6a3;
-    --integrated:#d1eaff;
-    --shadow: 0 8px 24px rgba(20,40,80,0.06);
-    --radius:12px;
-  }
-  *{box-sizing:border-box}
-  body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:#112;}
-  header{background:linear-gradient(90deg,var(--primary),#005bb5);color:#fff;padding:18px 20px;display:flex;align-items:center;justify-content:space-between}
-  header h1{font-size:18px;margin:0;font-weight:600;letter-spacing:.2px}
-  .container{max-width:1200px;margin:20px auto;padding:0 16px}
-  .card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);overflow:hidden}
-  .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px}
-  .tabs{display:flex;gap:8px}
-  .tab-btn{background:#fff;border:1px solid #e6eef9;padding:8px 14px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:600}
-  .tab-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 6px 18px rgba(0,102,204,0.12)}
-  .logout{background:#fff;color:var(--primary);border:1px solid #e6eef9;padding:8px 12px;border-radius:8px;cursor:pointer}
-  .grid{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:relative}
-  input[type="text"], select{padding:10px 12px;border-radius:8px;border:1px solid #e6eef9;background:#fbfdff;min-width:180px}
-  .btn{background:var(--primary);color:#fff;border:none;padding:10px 12px;border-radius:8px;cursor:pointer}
-  .btn.ghost{background:#fff;color:var(--primary);border:1px solid #e6eef9}
-  #suggestions, #suggestionsCalloff{position:absolute;top:46px;left:0;background:#fff;border:1px solid #e6eef9;border-radius:8px;box-shadow:0 6px 18px rgba(20,40,80,0.06);max-height:240px;overflow:auto;width:320px;z-index:50}
-  #suggestions div, #suggestionsCalloff div{padding:8px 10px;cursor:pointer}
-  #suggestions div:hover,#suggestionsCalloff div:hover{background:var(--accent-light)}
-  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
-  th,td{padding:8px;border-bottom:1px solid #eef3fb;text-align:left}
-  th{background:#fbfdff;color:#285;position:sticky;top:0}
-  tr.row-installed{background:var(--installed)!important}
-  tr.row-integrated{background:var(--integrated)!important}
-  .map-link{color:var(--primary);text-decoration:none;font-weight:600}
-  .summary-table td,.summary-table th{text-align:center}
-  .detail-area{margin-top:10px;background:#fbfdff;border-radius:8px;padding:10px;border:1px solid #eef6ff}
-  /* login modal */
-  .modal-backdrop{position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(2,6,23,0.45);display:flex;align-items:center;justify-content:center;z-index:9999}
-  .modal{width:360px;background:#fff;padding:20px;border-radius:12px;box-shadow:0 18px 40px rgba(2,6,23,0.18)}
-  .modal h3{margin:0 0 10px 0}
-  .modal input{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #e6eef9}
-  .modal .login-actions{display:flex;gap:8px;justify-content:flex-end}
-  .small{font-size:13px;color:var(--muted)}
-  @media(max-width:880px){
-    .topbar{flex-direction:column;align-items:flex-start;gap:12px}
-    #suggestions,#suggestionsCalloff{width:86vw;left:0}
-  }
+body { font-family: Arial, sans-serif; margin:0; background:#f7f9fb; }
+h2 { margin-bottom:10px; }
+.container { padding:20px; }
+
+.tabs { display:flex; margin-bottom:10px; }
+.tab { padding:10px 20px; cursor:pointer; background:#eee; margin-right:5px; border-radius:5px 5px 0 0; }
+.tab.active { background:#4285F4; color:white; font-weight:bold; }
+.tab-content { display:none; background:white; padding:15px; border-radius:0 5px 5px 5px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+.tab-content.active { display:block; }
+
+#autocomplete-list { border:1px solid #d4d4d4; max-height:150px; overflow-y:auto; position:absolute; background:white; z-index:99; width:100%; }
+.autocomplete-item { padding:5px; cursor:pointer; }
+.autocomplete-item:hover { background:#e9e9e9; }
+
+.highlight-row { background-color:#d1eaff !important; }
+
+#login-box { display:flex; justify-content:center; align-items:center; height:100vh; }
+#login-form { background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.2); width:300px; text-align:center; }
+#login-form input { width:90%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:5px; }
+#login-form button { background:#4285F4; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; margin-top:10px; }
+#logout-btn { float:right; margin-top:-35px; cursor:pointer; color:#4285F4; }
+
+#filter_div select { margin-right:10px; padding:5px; }
+#total_ok { margin:10px 0; font-weight:bold; color:#333; }
 </style>
 </head>
 <body>
-<header>
-  <h1>Hệ thống Tra cứu Trạm 5G</h1>
-  <div>
-    <button id="logoutBtn" class="logout" style="display:none">Đăng xuất</button>
-  </div>
-</header>
 
-<div class="container">
-  <div class="card">
-    <div class="topbar">
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="chung">Tra cứu chung</button>
-        <button class="tab-btn" data-tab="calloff">Calloff</button>
-        <button class="tab-btn" data-tab="tong">Tổng hợp</button>
-      </div>
-      <div class="small" id="userInfo"> </div>
-    </div>
-
-    <!-- Tra cứu chung -->
-    <div id="panel-chung" class="panel" style="margin-top:12px">
-      <div class="controls">
-        <div style="position:relative">
-          <input id="inputChung" type="text" placeholder="Tìm mã trạm / cụm / huyện (ví dụ: 206 hoặc Tam)">
-          <div id="suggestions" style="display:none"></div>
-        </div>
-        <select id="drop_huyen_chung" title="Huyện (A)"><option value="">--Huyện--</option></select>
-        <select id="drop_cum_chung" title="Cụm (B)"><option value="">--Cụm--</option></select>
-        <select id="drop_tram_chung" title="Trạm (C)"><option value="">--Trạm--</option></select>
-        <button class="btn" id="resetChungBtn">Reset</button>
-      </div>
-      <div id="table_chung" style="margin-top:12px"></div>
-    </div>
-
-    <!-- Calloff -->
-    <div id="panel-calloff" class="panel" style="margin-top:12px;display:none">
-      <div class="controls">
-        <div style="position:relative">
-          <select id="drop_tram_calloff"><option value="">--Chọn trạm (A)--</option></select>
-        </div>
-        <select id="drop_huyen_calloff"><option value="">--Chọn huyện (Q)--</option></select>
-        <div style="position:relative">
-          <input id="inputCalloff" type="text" placeholder="Tìm trong Calloff...">
-          <div id="suggestionsCalloff" style="display:none"></div>
-        </div>
-        <button class="btn" id="resetCalloffBtn">Reset</button>
-      </div>
-      <div id="table_calloff" style="margin-top:12px"></div>
-    </div>
-
-    <!-- Tong hop -->
-    <div id="panel-tong" class="panel" style="margin-top:12px;display:none">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn" id="btnSummaryHuyen">Theo Huyện</button>
-        <button class="btn" id="btnSummaryCum">Theo Cụm</button>
-        <select id="summaryFilter"><option value="">Tất cả</option><option value="lapdat">Chỉ đã lắp</option><option value="tichhop">Chỉ đã tích hợp</option></select>
-      </div>
-      <div id="summaryArea" style="margin-top:12px"></div>
-      <div id="summaryDetail" style="margin-top:12px"></div>
-    </div>
+<div id="login-box">
+  <div id="login-form">
+    <h3>Đăng nhập</h3>
+    <input type="text" id="username" placeholder="Tên đăng nhập">
+    <input type="password" id="password" placeholder="Mật khẩu">
+    <button onclick="login()">Đăng nhập</button>
+    <p id="login-msg" style="color:red;"></p>
   </div>
 </div>
 
-<!-- Login modal -->
-<div id="loginModal" class="modal-backdrop" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true">
-    <h3>Đăng nhập</h3>
-    <input id="loginUser" type="text" placeholder="Tên đăng nhập">
-    <input id="loginPass" type="password" placeholder="Mật khẩu">
-    <div class="login-actions" style="margin-top:6px">
-      <button id="loginBtn" class="btn">Đăng nhập</button>
+<div id="main-app" style="display:none;" class="container">
+  <h2>Tra cứu trạm 5G</h2>
+  <span id="logout-btn" onclick="logout()">Đăng xuất</span>
+
+  <div class="tabs">
+    <div class="tab active" data-target="tab_chung">Tra cứu chung</div>
+    <div class="tab" data-target="tab_calloff">Tra cứu Calloff</div>
+    <div class="tab" data-target="tab_total">Tổng trạm đã lắp</div>
+  </div>
+
+  <div class="tab-content active" id="tab_chung">
+    <div style="position:relative; width:300px;">
+      <input type="text" id="search_chung" placeholder="Nhập mã trạm, cụm hoặc huyện">
     </div>
-    <p class="small" style="margin-top:8px;color:#c0392b" id="loginError"></p>
+    <div id="table_chung" style="margin-top:20px;"></div>
+  </div>
+
+  <div class="tab-content" id="tab_calloff">
+    <div style="position:relative; width:300px;">
+      <input type="text" id="search_calloff" placeholder="Nhập mã trạm, cụm hoặc huyện">
+    </div>
+    <div id="table_calloff" style="margin-top:20px;"></div>
+  </div>
+
+  <div class="tab-content" id="tab_total">
+    <div id="filter_div">
+      <select id="filter_huyen"></select>
+      <select id="filter_cum"></select>
+      <select id="filter_type">
+        <option value="">Tất cả trạm</option>
+        <option value="lapdat">Trạm đã lắp đặt</option>
+        <option value="tichhop">Trạm đã tích hợp</option>
+      </select>
+    </div>
+    <div id="total_ok"></div>
+    <div id="table_total" style="margin-top:20px;"></div>
   </div>
 </div>
 
 <script>
-/* ---------- CONFIG ---------- */
-const SHEET_ID = '1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8';
-const URL_SHEET = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=sheet`;
-const URL_CALLOFF = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=calloff`;
+google.charts.load('current', {'packages':['table']});
+google.charts.setOnLoadCallback(checkLogin);
 
-/* indices per your mapping:
-   sheet: A=0(huyen), B=1(cum), C=2(tram), F=5(lap), G=6(tich), J=9(lat), K=10(lng)
-   calloff: A=0(tram), Q=16(huyen)
-*/
-const IDX = {
-  sheet: { huyen:0, cum:1, tram:2, lap:5, tich:6, lat:9, lng:10 },
-  calloff: { tram:0, huyenQ:16 }
-};
-
-let sheetData = [];   // array rows including header at index 0
-let calloffData = []; // array rows including header at index 0
-
-/* ---------- Helper: fetch GViz sheet and parse, detect header row 1 ---------- */
-async function fetchGviz(url){
-  const res = await fetch(url);
-  const txt = await res.text();
-  const json = JSON.parse(txt.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
-  const rawRows = (json.table.rows || []).map(r => (r.c||[]).map(cell => cell?cell.v:''));
-  // find first non-empty row to be header (prefer index 0)
-  let headerIndex = 0;
-  for(let i=0;i<rawRows.length;i++){
-    const any = rawRows[i].some(v => v !== null && v !== undefined && String(v).trim() !== '');
-    if(any){ headerIndex = i; break; }
+function checkLogin(){
+  if(localStorage.getItem("loggedIn")==="true"){
+    document.getElementById("login-box").style.display="none";
+    document.getElementById("main-app").style.display="block";
+    initApp();
   }
-  const header = rawRows[headerIndex] || [];
-  const dataRows = rawRows.slice(headerIndex+1);
-  return [header, ...dataRows];
 }
 
-/* ---------- Login UI ---------- */
-function showLogin(){ document.getElementById('loginModal').style.display = 'flex'; }
-function hideLogin(){ document.getElementById('loginModal').style.display = 'none'; }
-function setLoggedInUI(user){
-  document.getElementById('logoutBtn').style.display = 'inline-block';
-  document.getElementById('userInfo').textContent = `Xin chào, ${user}`;
-}
-
-window.addEventListener('load', ()=>{
-  if(localStorage.getItem('tc_logged')==='1'){
-    hideLogin(); document.getElementById('appArea').style.display='block';
-    setLoggedInUI('admin');
-    startApp();
+function login(){
+  const u=document.getElementById("username").value;
+  const p=document.getElementById("password").value;
+  if(u==="admin" && p==="123456"){
+    localStorage.setItem("loggedIn","true");
+    document.getElementById("login-box").style.display="none";
+    document.getElementById("main-app").style.display="block";
+    initApp();
   } else {
-    showLogin();
+    document.getElementById("login-msg").innerText="Sai tài khoản hoặc mật khẩu!";
   }
-});
-
-document.getElementById('loginBtn').addEventListener('click', ()=>{
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value.trim();
-  if(u==='admin' && p==='123456'){
-    localStorage.setItem('tc_logged','1');
-    hideLogin(); setLoggedInUI('admin'); startApp();
-  } else {
-    document.getElementById('loginError').textContent = 'Sai tên đăng nhập hoặc mật khẩu';
-  }
-});
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  localStorage.removeItem('tc_logged'); location.reload();
-});
-
-/* ---------- Tab switching ---------- */
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=> {
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const t = btn.getAttribute('data-tab');
-    document.getElementById('panel-chung').style.display = t==='chung'? 'block':'none';
-    document.getElementById('panel-calloff').style.display = t==='calloff'? 'block':'none';
-    document.getElementById('panel-tong').style.display = t==='tong'? 'block':'none';
-    // clear suggestions when switch
-    hideSuggestions();
-    hideSuggestionsCalloff();
-  });
-});
-
-/* ---------- Start app: load sheets ---------- */
-async function startApp(){
-  try{
-    const s = await fetchGviz(URL_SHEET);
-    const c = await fetchGviz(URL_CALLOFF);
-    sheetData = s; calloffData = c;
-  } catch(err){
-    alert('Lỗi tải Google Sheet. Kiểm tra quyền chia sẻ (Anyone with link = Viewer).');
-    console.error(err);
-    return;
-  }
-  // populate UI
-  setupChung();
-  setupCalloff();
-  renderSummary('huyen'); // default
+}
+function logout(){
+  localStorage.removeItem("loggedIn");
+  location.reload();
 }
 
-/* ---------- Utilities ---------- */
-function escapeHtml(s){ return String(s===undefined||s===null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function isTruthyOne(v){ return v===1 || v==='1' || v===true; }
+let dataChung, dataCalloff, dataTotal;
 
-/* ---------- Tra cứu chung ---------- */
-function setupChung(){
-  // fill dropdowns from sheetData
-  fillSelectUnique(sheetData, IDX.sheet.huyen, '#drop_huyen_chung', '--Huyện (A)--');
-  fillSelectUnique(sheetData, IDX.sheet.cum, '#drop_cum_chung', '--Cụm (B)--');
-  fillSelectUnique(sheetData, IDX.sheet.tram, '#drop_tram_chung', '--Trạm (C)--');
-
-  // input suggestions
-  const input = document.getElementById('inputChung'), box = document.getElementById('suggestions');
-  input.addEventListener('input', (e)=>{
-    const q = e.target.value.trim().toLowerCase();
-    box.innerHTML='';
-    if(!q){ box.style.display='none'; return; }
-    const found = new Set();
-    const rows = sheetData.slice(1);
-    for(let r of rows){
-      [IDX.sheet.tram, IDX.sheet.cum, IDX.sheet.huyen].forEach(ci=>{
-        const v = r[ci]; if(v && String(v).toLowerCase().includes(q)) found.add(String(v));
-      });
-      if(found.size>=40) break;
-    }
-    Array.from(found).slice(0,30).forEach(s=>{ const d=document.createElement('div'); d.textContent=s; d.onclick=()=>{ input.value=''; hideSuggestions(); filterChungByKeyword(s); }; box.appendChild(d); });
-    box.style.display = found.size? 'block':'none';
-  });
-
-  // dropdown change handlers
-  document.getElementById('drop_huyen_chung').addEventListener('change', function(){ applyChungFilters(); });
-  document.getElementById('drop_cum_chung').addEventListener('change', function(){ applyChungFilters(); });
-  document.getElementById('drop_tram_chung').addEventListener('change', function(){ applyChungFilters(); });
-
-  document.getElementById('resetChungBtn').addEventListener('click', ()=>{
-    document.getElementById('inputChung').value='';
-    document.getElementById('drop_huyen_chung').value='';
-    document.getElementById('drop_cum_chung').value='';
-    document.getElementById('drop_tram_chung').value='';
-    drawChungRows(sheetData.slice(1));
-    hideSuggestions();
-  });
-
-  // initial draw
-  drawChungRows(sheetData.slice(1));
+function initApp(){
+  initTabs();
+  loadSheet('sheet','chung');
+  loadSheet('calloff','calloff');
+  loadSheet('sheet','total',true);
 }
 
-function hideSuggestions(){ const box=document.getElementById('suggestions'); box.style.display='none'; box.innerHTML=''; }
-function hideSuggestionsCalloff(){ const box=document.getElementById('suggestionsCalloff'); box.style.display='none'; box.innerHTML=''; }
-
-function fillSelectUnique(rows, colIdx, selector, placeholder){
-  const set = new Set();
-  for(let i=1;i<rows.length;i++){
-    const v = rows[i][colIdx];
-    if(v !== undefined && v !== null && String(v).trim() !== '') set.add(String(v));
-  }
-  const arr = Array.from(set).sort();
-  const sel = document.querySelector(selector);
-  sel.innerHTML = `<option value="">${placeholder}</option>`;
-  arr.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
-}
-
-function applyChungFilters(){
-  const h = document.getElementById('drop_huyen_chung').value;
-  const c = document.getElementById('drop_cum_chung').value;
-  const t = document.getElementById('drop_tram_chung').value;
-  let rows = sheetData.slice(1);
-  if(h) rows = rows.filter(r => String(r[IDX.sheet.huyen]) === String(h));
-  if(c) rows = rows.filter(r => String(r[IDX.sheet.cum]) === String(c));
-  if(t) rows = rows.filter(r => String(r[IDX.sheet.tram]) === String(t));
-  drawChungRows(rows);
-}
-
-function filterChungByKeyword(keyword){
-  const q = String(keyword).toLowerCase();
-  const rows = sheetData.slice(1).filter(r => r.some(cell => cell && String(cell).toLowerCase().includes(q)));
-  drawChungRows(rows);
-}
-
-function drawChungRows(rows){
-  const header = sheetData[0] || [];
-  const lat = IDX.sheet.lat, lng = IDX.sheet.lng;
-  let html = '<table><thead><tr>';
-  for(let i=0;i<header.length;i++){
-    if(i===lat || i===lng) continue;
-    html += `<th>${escapeHtml(header[i]||'')}</th>`;
-  }
-  html += `<th>Bản đồ</th></tr></thead><tbody>`;
-  for(let r of rows){
-    const f = r[IDX.sheet.lap], g = r[IDX.sheet.tich];
-    const isLap = isTruthyOne(f), isTich = isTruthyOne(g);
-    const cls = isLap && isTich ? 'row-integrated' : (isLap ? 'row-installed' : '');
-    html += `<tr class="${cls}">`;
-    for(let i=0;i<header.length;i++){
-      if(i===lat || i===lng) continue;
-      html += `<td>${escapeHtml(r[i]===undefined?'':r[i])}</td>`;
-    }
-    const latv = r[lat], lngv = r[lng], tram = r[IDX.sheet.tram] || '';
-    if(latv !== undefined && lngv !== undefined && String(latv).trim() !== '' && String(lngv).trim() !== ''){
-      html += `<td><a class="map-link" target="_blank" href="https://www.google.com/maps?q=${latv},${lngv} (${encodeURIComponent(tram)})">Xem</a></td>`;
-    } else {
-      html += `<td></td>`;
-    }
-    html += `</tr>`;
-  }
-  html += '</tbody></table>';
-  document.getElementById('table_chung').innerHTML = html;
-}
-
-/* ---------- Calloff ---------- */
-function setupCalloff(){
-  fillSelectUnique(calloffData, IDX.calloff.tram, '#drop_tram_calloff', '--Trạm (A)--');
-  // only populate huyen if column exists
-  if(calloffData[0] && calloffData[0].length > IDX.calloff.huyenQ){
-    fillSelectUnique(calloffData, IDX.calloff.huyenQ, '#drop_huyen_calloff', '--Huyện (Q)--');
-  } else {
-    document.getElementById('drop_huyen_calloff').innerHTML = '<option value="">--Huyện (Q)--</option>';
-  }
-  // suggestions
-  document.getElementById('inputCalloff').addEventListener('input', (e)=>{
-    const q = e.target.value.trim().toLowerCase();
-    const box = document.getElementById('suggestionsCalloff'); box.innerHTML='';
-    if(!q){ box.style.display='none'; return; }
-    const found = new Set();
-    for(let i=1;i<calloffData.length;i++){
-      const r = calloffData[i];
-      [IDX.calloff.tram, IDX.calloff.huyenQ].forEach(ci=>{
-        if(ci < r.length){
-          const v = r[ci]; if(v && String(v).toLowerCase().includes(q)) found.add(String(v));
-        }
-      });
-      if(found.size>=30) break;
-    }
-    Array.from(found).slice(0,30).forEach(s=>{
-      const d=document.createElement('div'); d.textContent = s; d.onclick=()=>{ e.target.value=''; box.innerHTML=''; filterCalloffByKeyword(s); };
-      box.appendChild(d);
+function initTabs(){
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      this.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+      document.getElementById(this.dataset.target).classList.add('active');
     });
-    box.style.display = found.size ? 'block' : 'none';
   });
+}
 
-  document.getElementById('drop_tram_calloff').addEventListener('change', function(){ const v=this.value; if(!v) drawCalloffRows(calloffData.slice(1)); else filterCalloffByKeyword(v);});
-  document.getElementById('drop_huyen_calloff').addEventListener('change', function(){ const v=this.value; if(!v) drawCalloffRows(calloffData.slice(1)); else filterCalloffByKeyword(v);});
+function loadSheet(sheetName,key,isTotal=false){
+  const query=new google.visualization.Query(
+    `https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=${sheetName}&headers=1`
+  );
+  query.send(resp=>{
+    if(resp.isError()){ alert(resp.getMessage()); return; }
+    const dt=resp.getDataTable();
 
-  document.getElementById('resetCalloffBtn').addEventListener('click', ()=>{
-    document.getElementById('inputCalloff').value=''; document.getElementById('drop_tram_calloff').value=''; document.getElementById('drop_huyen_calloff').value='';
-    drawCalloffRows(calloffData.slice(1)); hideSuggestionsCalloff();
+    let tramCol=0, cumCol=1, huyenCol=2, lapCol=5, tichhopCol=6, phoneCol=dt.getNumberOfColumns()-3;
+    let latCol=dt.getNumberOfColumns()-2, lngCol=dt.getNumberOfColumns()-1;
+
+    // SĐT có thể bấm gọi
+    for(let r=0;r<dt.getNumberOfRows();r++){
+      const val=dt.getValue(r,phoneCol);
+      if(val) dt.setValue(r,phoneCol,`<a href="tel:${val}">${val}</a>`);
+    }
+
+    // Thêm cột bản đồ
+    const mapCol=dt.addColumn('string','Bản đồ');
+    for(let r=0;r<dt.getNumberOfRows();r++){
+      const lat=dt.getValue(r,latCol);
+      const lng=dt.getValue(r,lngCol);
+      const ten=dt.getValue(r,tramCol);
+      if(lat && lng){
+        dt.setValue(r,mapCol,`<a href="https://www.google.com/maps?q=${lat},${lng}(${encodeURIComponent(ten)})" target="_blank">Xem bản đồ</a>`);
+      } else dt.setValue(r,mapCol,'');
+    }
+
+    const view = hideLatLng(dt, latCol, lngCol);
+
+    const sug=[];
+    for(let r=0;r<dt.getNumberOfRows();r++){
+      sug.push((dt.getValue(r,tramCol)||'')+' (Mã trạm)');
+      sug.push((dt.getValue(r,cumCol)||'')+' (Cụm)');
+      sug.push((dt.getValue(r,huyenCol)||'')+' (Huyện)');
+    }
+
+    if(key==='chung'){ dataChung=view; drawTable(view,'table_chung'); initAuto('search_chung',dt,sug,'table_chung',tramCol,cumCol,huyenCol,latCol,lngCol); }
+    if(key==='calloff'){ dataCalloff=view; drawTable(view,'table_calloff'); initAuto('search_calloff',dt,sug,'table_calloff',tramCol,cumCol,huyenCol,latCol,lngCol); }
+    if(key==='total'){ dataTotal=view; drawTable(view,'table_total'); setupFilterTotal(view,tramCol,cumCol,huyenCol,lapCol,tichhopCol); updateTotalCount(view,lapCol,tichhopCol); }
   });
-
-  drawCalloffRows(calloffData.slice(1));
 }
 
-function filterCalloffByKeyword(k){
-  const q = String(k).toLowerCase();
-  const rows = calloffData.slice(1).filter(r => r.some(cell => cell && String(cell).toLowerCase().includes(q)));
-  drawCalloffRows(rows);
-}
-
-function drawCalloffRows(rows){
-  const header = calloffData[0] || [];
-  let html = '<table><thead><tr>';
-  header.forEach(h=> html += `<th>${escapeHtml(h||'')}</th>`);
-  html += '</tr></thead><tbody>';
-  for(let r of rows){
-    html += '<tr>';
-    for(let i=0;i<header.length;i++) html += `<td>${escapeHtml(r[i]===undefined?'':r[i])}</td>`;
-    html += '</tr>';
+function hideLatLng(dt,latCol,lngCol){
+  const view=new google.visualization.DataView(dt);
+  const cols=[];
+  for(let i=0;i<dt.getNumberOfColumns();i++){
+    if(i!==latCol && i!==lngCol) cols.push(i);
   }
-  html += '</tbody></table>';
-  document.getElementById('table_calloff').innerHTML = html;
+  view.setColumns(cols);
+  return view;
 }
 
-/* ---------- Summary (with expandable detail) ---------- */
-document.getElementById('btnSummaryHuyen').addEventListener('click', ()=>renderSummary('huyen'));
-document.getElementById('btnSummaryCum').addEventListener('click', ()=>renderSummary('cum'));
-document.getElementById('summaryFilter').addEventListener('change', ()=> {
-  const mode = document.getElementById('summaryArea').dataset.mode || 'huyen';
-  renderSummary(mode);
-});
-
-function renderSummary(mode){
-  if(!sheetData || sheetData.length<2) return;
-  const rows = sheetData.slice(1);
-  const col = (mode==='huyen')? IDX.sheet.huyen : IDX.sheet.cum;
-  const groups = new Map();
-  for(let i=0;i<rows.length;i++){
-    const key = rows[i][col] || '(Không xác định)';
-    if(!groups.has(key)) groups.set(key, {total:0, lap:0, tich:0, indices:[]});
-    const g = groups.get(key);
-    g.total++; if(isTruthyOne(rows[i][IDX.sheet.lap])) g.lap++; if(isTruthyOne(rows[i][IDX.sheet.tich])) g.tich++; g.indices.push(i);
-  }
-  // build table
-  let html = '<table class="summary-table"><thead><tr><th>STT</th><th>' + (mode==='huyen'?'Huyện':'Cụm') + '</th><th>Tổng</th><th>Đã lắp</th><th>Đã tích hợp</th><th>% Lắp</th><th>% Tích hợp</th><th>Chi tiết</th></tr></thead><tbody>';
-  let idx=0;
-  Array.from(groups.entries()).sort((a,b)=>b[1].total - a[1].total).forEach(([k,v])=>{
-    idx++;
-    const pctLap = v.total ? Math.round(v.lap*100/v.total) : 0;
-    const pctTich = v.total ? Math.round(v.tich*100/v.total) : 0;
-    const safeKey = encodeURIComponent(k);
-    html += `<tr id="group-${safeKey}"><td style="text-align:center">${idx}</td><td>${escapeHtml(k)}</td><td style="text-align:center">${v.total}</td><td style="text-align:center">${v.lap}</td><td style="text-align:center">${v.tich}</td><td style="text-align:center">${pctLap}%</td><td style="text-align:center">${pctTich}%</td><td style="text-align:center"><button class="btn" onclick="toggleDetail('${safeKey}','${mode}')">Xem chi tiết</button></td></tr>`;
+function drawTable(dt,divId){
+  const table=new google.visualization.Table(document.getElementById(divId));
+  google.visualization.events.addListener(table,'select',function(){
+    const sel=table.getSelection()[0];
+    if(sel) highlightRow(divId, sel.row);
   });
-  html += '</tbody></table>';
-  document.getElementById('summaryArea').innerHTML = html;
-  document.getElementById('summaryArea').dataset.mode = mode;
-  document.getElementById('summaryDetail').innerHTML = '';
+  table.draw(dt,{showRowNumber:true,width:'100%',height:'100%',allowHtml:true,page:'enable',pageSize:20});
 }
 
-/* toggle detail: expand/collapse rows under the group row */
-function toggleDetail(encodedKey, mode){
-  const key = decodeURIComponent(encodedKey);
-  const detailId = 'detail-for-' + encodedKey;
-  const existing = document.getElementById(detailId);
-  if(existing){
-    existing.remove();
-    return;
-  }
-  // find group indices
-  const col = (mode==='huyen')? IDX.sheet.huyen : IDX.sheet.cum;
-  const rows = sheetData.slice(1);
-  const matched = [];
-  for(let i=0;i<rows.length;i++){
-    if(String(rows[i][col]) === key) matched.push(rows[i]);
-  }
-  // apply summary filter (if any)
-  const sf = document.getElementById('summaryFilter').value;
-  let rowsToShow = matched;
-  if(sf === 'lapdat') rowsToShow = matched.filter(r => isTruthyOne(r[IDX.sheet.lap]));
-  if(sf === 'tichhop') rowsToShow = matched.filter(r => isTruthyOne(r[IDX.sheet.tich]));
+function highlightRow(divId,rowIndex){
+  const rows=document.querySelectorAll(`#${divId} table tr`);
+  rows.forEach(r=>r.classList.remove('highlight-row'));
+  if(rows[rowIndex+1]) rows[rowIndex+1].classList.add('highlight-row');
+}
 
-  // build detail HTML
-  const header = sheetData[0];
-  const lat = IDX.sheet.lat, lng = IDX.sheet.lng;
-  let html = `<div id="${detailId}" class="detail-area"><table><thead><tr>`;
-  for(let i=0;i<header.length;i++){ if(i===lat || i===lng) continue; html += `<th>${escapeHtml(header[i]||'')}</th>`; }
-  html += `<th>Bản đồ</th></tr></thead><tbody>`;
-  rowsToShow.forEach(r=>{
-    const isLap = isTruthyOne(r[IDX.sheet.lap]), isTich = isTruthyOne(r[IDX.sheet.tich]);
-    const cls = isLap && isTich ? 'row-integrated' : (isLap ? 'row-installed' : '');
-    html += `<tr class="${cls}">`;
-    for(let i=0;i<header.length;i++){ if(i===lat || i===lng) continue; html += `<td>${escapeHtml(r[i]===undefined?'':r[i])}</td>`; }
-    const latv = r[lat], lngv = r[lng], tram = r[IDX.sheet.tram]||'';
-    if(latv && lngv) html += `<td><a class="map-link" target="_blank" href="https://www.google.com/maps?q=${latv},${lngv} (${encodeURIComponent(tram)})">Xem</a></td>`; else html += '<td></td>';
-    html += `</tr>`;
+function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol,latCol,lngCol){
+  const inp=document.getElementById(inpId);
+  inp.addEventListener('input',function(){
+    const val=this.value.toLowerCase(); closeAllLists();
+    if(!val) return;
+    const list=document.createElement('DIV'); list.setAttribute('id','autocomplete-list'); this.parentNode.appendChild(list);
+    let count=0;
+    for(let i=0;i<sug.length&&count<10;i++){
+      if(sug[i].toLowerCase().includes(val)){
+        const item=document.createElement('DIV'); item.innerHTML=sug[i]; item.classList.add('autocomplete-item');
+        item.addEventListener('click',function(){
+          const text=this.innerText.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
+          let col=tramCol; if(this.innerText.includes('(Cụm)')) col=cumCol; else if(this.innerText.includes('(Huyện)')) col=huyenCol;
+
+          const f=new google.visualization.DataTable();
+          for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c),dt.getColumnLabel(c));
+          for(let r=0;r<dt.getNumberOfRows();r++){
+            if((dt.getValue(r,col)||'').toString().toLowerCase().includes(text)){
+              const row=[]; for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c));
+              f.addRow(row);
+            }
+          }
+
+          // ẩn tọa độ trước khi hiển thị
+          const filtered = hideLatLng(f, latCol, lngCol);
+          drawTable(filtered,tableDiv);
+          inp.value='';
+        });
+        list.appendChild(item); count++;
+      }
+    }
   });
-  html += '</tbody></table></div>';
-
-  // insert detail after the group's row in summaryArea table
-  const groupRow = document.getElementById('group-' + encodedKey);
-  if(groupRow){
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = html;
-    groupRow.parentNode.insertBefore(wrapper, groupRow.nextSibling);
-    // scroll into view a bit
-    wrapper.scrollIntoView({behavior:'smooth', block:'start'});
-  } else {
-    // fallback: place into summaryDetail area
-    document.getElementById('summaryDetail').innerHTML = html;
-  }
+  function closeAllLists(){ const x=document.getElementsByClassName('autocomplete-item'); for(let i=x.length-1;i>=0;i--) x[i].parentNode.remove();}
+  document.addEventListener('click',()=>closeAllLists());
 }
 
-/* ---------- Reset helpers already wired above ---------- */
+function setupFilterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol){
+  const hSet=new Set(), cSet=new Set();
+  for(let r=0;r<dt.getNumberOfRows();r++){ const h=dt.getValue(r,huyenCol)||''; const c=dt.getValue(r,cumCol)||''; if(h) hSet.add(h); if(c) cSet.add(c);}
+  const hS=document.getElementById('filter_huyen'), cS=document.getElementById('filter_cum'), tS=document.getElementById('filter_type');
+  hS.innerHTML="<option value=''>Tất cả huyện</option>"; cS.innerHTML="<option value=''>Tất cả cụm</option>";
+  hSet.forEach(h=>{const o=document.createElement('option'); o.value=h; o.text=h; hS.appendChild(o);});
+  cSet.forEach(c=>{const o=document.createElement('option'); o.value=c; o.text=c; cS.appendChild(o);});
+  hS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol);
+  cS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol);
+  tS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol);
+}
 
-/* ---------- Utility: decode/encode helpers ---------- */
-function escapeHtml(s){ return String(s===undefined||s===null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol){
+  const h=document.getElementById('filter_huyen').value.toLowerCase();
+  const c=document.getElementById('filter_cum').value.toLowerCase();
+  const type=document.getElementById('filter_type').value;
+  const f=new google.visualization.DataTable();
+  for(let col=0;col<dt.getNumberOfColumns();col++) f.addColumn(dt.getColumnType(col),dt.getColumnLabel(col));
+  for(let r=0;r<dt.getNumberOfRows();r++){
+    const rowH=(dt.getValue(r,huyenCol)||'').toLowerCase();
+    const rowC=(dt.getValue(r,cumCol)||'').toLowerCase();
+    if((!h || rowH===h) && (!c || rowC===c)){
+      if(type==='lapdat' && dt.getValue(r,lapCol)!=1) continue;
+      if(type==='tichhop' && dt.getValue(r,tichhopCol)!=1) continue;
+      const row=[]; for(let col=0;col<dt.getNumberOfColumns();col++) row.push(dt.getValue(r,col));
+      f.addRow(row);
+    }
+  }
+  const filtered = hideLatLng(f, f.getNumberOfColumns()-3, f.getNumberOfColumns()-2);
+  drawTable(filtered,'table_total');
+  updateTotalCount(f,lapCol,tichhopCol);
+}
 
-/* ---------- End ---------- */
+function updateTotalCount(dt,lapCol,tichhopCol){
+  let lap=0, tichhop=0;
+  for(let r=0;r<dt.getNumberOfRows();r++){
+    if(dt.getValue(r,lapCol)==1) lap++;
+    if(dt.getValue(r,tichhopCol)==1) tichhop++;
+  }
+  document.getElementById('total_ok').innerText=`Tổng trạm đã lắp: ${lap} | Tổng trạm đã tích hợp: ${tichhop}`;
+}
 </script>
 </body>
 </html>
