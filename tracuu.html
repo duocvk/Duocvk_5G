@@ -19,19 +19,14 @@
   #suggestions,#suggestionsCalloff{position:absolute;background:#fff;border:1px solid #ddd;border-radius:6px;max-height:220px;overflow:auto;z-index:999;width:320px}
   #suggestions div,#suggestionsCalloff div{padding:8px;cursor:pointer}
   #suggestions div:hover,#suggestionsCalloff div:hover{background:#eef8ff}
-  table.google-visualization-table-table{border-collapse:collapse !important;width:100% !important}
-  .google-visualization-table-table td,.google-visualization-table-table th{border:1px solid #e8edf3 !important;padding:6px !important}
-  tr.row-installed{background:var(--yellow) !important}
-  tr.row-integrated{background:var(--green) !important}
+  tr.row-installed{background:var(--yellow)!important}
+  tr.row-integrated{background:var(--green)!important}
   .small-btn{padding:6px 10px;border-radius:6px;background:#2f80ed;color:#fff;border:none;cursor:pointer}
   .ghost{background:#fff;color:var(--blue);border:1px solid #cfd8e3}
-  /* login modal */
   .modal-backdrop{position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:2000}
   .modal{background:#fff;padding:18px;border-radius:8px;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,0.25)}
-  .modal h3{margin:0 0 10px 0}
   .modal input{width:100%;margin:6px 0;padding:8px;border:1px solid #ccc;border-radius:6px}
   .modal button{margin-top:8px;padding:8px 12px;border-radius:6px;background:var(--blue);color:#fff;border:none}
-  @media(max-width:780px){#suggestions,#suggestionsCalloff{width:86vw}}
 </style>
 </head>
 <body>
@@ -45,33 +40,27 @@
         <button id="btnCalloff" onclick="showTab('calloff', this)">Tra cứu Calloff</button>
         <button id="btnTong" onclick="showTab('tong', this)">Tổng hợp</button>
       </nav>
-      <div>
-        <button class="ghost" onclick="logout()">Đăng xuất</button>
-      </div>
+      <div><button class="ghost" onclick="logout()">Đăng xuất</button></div>
     </div>
 
-    <!-- Tra cứu chung -->
-    <div id="tab-chung" style="margin-top:12px">
+    <div id="tab-chung">
       <h3>Tra cứu chung</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:relative">
-        <input id="inputChung" type="text" placeholder="Gõ mã trạm / cụm / huyện (ví dụ: 206 hoặc Tam)" style="width:320px" />
+        <input id="inputChung" type="text" placeholder="Tìm mã trạm, cụm, huyện..." style="width:320px" />
         <div id="suggestions"></div>
-
-        <select id="drop_huyen_chung" title="Huyện (cột A)"><option value="">--Huyện--</option></select>
-        <select id="drop_cum_chung" title="Cụm (cột B)"><option value="">--Cụm--</option></select>
-        <select id="drop_tram_chung" title="Trạm (cột C)"><option value="">--Trạm--</option></select>
-
+        <select id="drop_huyen_chung"><option value="">--Huyện--</option></select>
+        <select id="drop_cum_chung"><option value="">--Cụm--</option></select>
+        <select id="drop_tram_chung"><option value="">--Trạm--</option></select>
         <button class="small-btn" onclick="resetChung()">Reset</button>
       </div>
       <div id="table_chung" style="margin-top:12px"></div>
     </div>
 
-    <!-- Calloff -->
-    <div id="tab-calloff" style="margin-top:12px;display:none">
+    <div id="tab-calloff" style="display:none">
       <h3>Tra cứu Calloff</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:relative">
-        <select id="drop_tram_calloff"><option value="">--Chọn trạm (A)--</option></select>
-        <select id="drop_huyen_calloff"><option value="">--Chọn huyện (Q)--</option></select>
+        <select id="drop_tram_calloff"><option value="">--Trạm (A)--</option></select>
+        <select id="drop_huyen_calloff"><option value="">--Huyện (Q)--</option></select>
         <input id="inputCalloff" type="text" placeholder="Tìm trạm trong Calloff..." style="width:320px" />
         <div id="suggestionsCalloff"></div>
         <button class="small-btn" onclick="resetCalloff()">Reset</button>
@@ -79,419 +68,94 @@
       <div id="table_calloff" style="margin-top:12px"></div>
     </div>
 
-    <!-- Tổng hợp -->
-    <div id="tab-tong" style="margin-top:12px;display:none">
+    <div id="tab-tong" style="display:none">
       <h3>Tổng hợp</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button class="small-btn" onclick="renderSummary('huyen')">Theo Huyện</button>
-        <button class="small-btn" onclick="renderSummary('cum')">Theo Cụm</button>
-        <select id="summaryFilter" style="margin-left:8px">
-          <option value="">Tất cả</option>
-          <option value="lapdat">Chỉ trạm đã lắp</option>
-          <option value="tichhop">Chỉ trạm đã tích hợp</option>
-        </select>
-      </div>
-      <div id="summaryArea" style="margin-top:12px"></div>
-      <div id="summaryDetail" style="margin-top:12px"></div>
+      <div id="summaryArea"></div>
     </div>
   </div>
 </div>
 
-<!-- Login popup (small) -->
 <div id="loginModal" class="modal-backdrop" style="display:none">
-  <div class="modal" role="dialog" aria-modal="true">
+  <div class="modal">
     <h3>Đăng nhập</h3>
-    <input id="login_user" type="text" placeholder="Tên đăng nhập" autocomplete="off" />
-    <input id="login_pass" type="password" placeholder="Mật khẩu" autocomplete="new-password" />
-    <div style="display:flex;justify-content:flex-end;gap:8px">
-      <button onclick="loginSubmit()">Đăng nhập</button>
-    </div>
-    <p id="loginError" style="color:#c0392b;margin-top:8px"></p>
+    <input id="login_user" type="text" placeholder="Tên đăng nhập" />
+    <input id="login_pass" type="password" placeholder="Mật khẩu" />
+    <button onclick="loginSubmit()">Đăng nhập</button>
+    <p id="loginError" style="color:#c0392b"></p>
   </div>
 </div>
 
 <script>
-/* =========== CONFIG & GLOBALS =========== */
 google.charts.load('current', {'packages':['table']});
 const SHEET_ID = '1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8';
 const URL_SHEET = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=sheet&headers=1`;
 const URL_CALLOFF = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=calloff&headers=1`;
 
-let sheetDT = null, calloffDT = null;
-const meta = {
-  sheet: { huyen:0, cum:1, tram:2, lap:5, tich:6, lat:-2, lng:-1 },
-  calloff: { tram:0, huyenQ:16, lap:5, tich:6, lat:-2, lng:-1 }
+let sheetDT=null, calloffDT=null;
+
+window.onload = ()=>{
+  if(localStorage.getItem('tc_logged')==='1'){
+    $('#appArea').show();
+    google.charts.setOnLoadCallback(initApp);
+  }else $('#loginModal').show();
 };
 
-/* =========== AUTH FLOW =========== */
-// Show login modal if not logged in
-function showLoginModal(){ document.getElementById('loginModal').style.display='flex'; }
-function hideLoginModal(){ document.getElementById('loginModal').style.display='none'; }
-
 function loginSubmit(){
-  const user = document.getElementById('login_user').value || '';
-  const pass = document.getElementById('login_pass').value || '';
-  // credentials fixed (do not display hint on popup)
-  if(user === 'admin' && pass === '123456'){
+  const u=$('#login_user').val(), p=$('#login_pass').val();
+  if(u==='admin'&&p==='123456'){
     localStorage.setItem('tc_logged','1');
-    document.getElementById('loginError').innerText = '';
-    hideLoginModal();
-    document.getElementById('appArea').style.display = 'block';
-    // load data after charts loaded
+    $('#loginModal').hide(); $('#appArea').show();
     google.charts.setOnLoadCallback(initApp);
-  } else {
-    document.getElementById('loginError').innerText = 'Sai tên đăng nhập hoặc mật khẩu';
-  }
+  }else $('#loginError').text('Sai tên đăng nhập hoặc mật khẩu');
 }
+function logout(){localStorage.removeItem('tc_logged');location.reload();}
 
-function logout(){
-  localStorage.removeItem('tc_logged');
-  location.reload();
-}
-
-/* On page load: show modal if not logged */
-window.addEventListener('load', ()=>{
-  if(localStorage.getItem('tc_logged')){
-    document.getElementById('appArea').style.display = 'block';
-    google.charts.setOnLoadCallback(initApp);
-  } else {
-    showLoginModal();
-  }
-});
-
-/* =========== INIT: load sheets and bind UI =========== */
 function initApp(){
-  loadSheet(URL_SHEET, 'sheet', onSheetLoaded);
-  loadSheet(URL_CALLOFF, 'calloff', onCalloffLoaded);
-  bindUI();
-}
-
-function loadSheet(url, key, cb){
-  const q = new google.visualization.Query(url);
-  q.send(resp=>{
-    if(resp.isError()){
-      alert('Lỗi tải dữ liệu: ' + resp.getMessage());
-      return;
-    }
-    cb(resp.getDataTable());
+  loadSheet(URL_SHEET, dt=>{
+    sheetDT=dt; renderChung(dt);
+  });
+  loadSheet(URL_CALLOFF, dt=>{
+    calloffDT=dt; renderCalloff(dt);
   });
 }
 
-/* =========== AFTER LOAD HANDLERS =========== */
-function onSheetLoaded(dt){
-  sheetDT = dt;
-  const ncol = sheetDT.getNumberOfColumns();
-  meta.sheet.lat = ncol - 2;
-  meta.sheet.lng = ncol - 1;
-  // populate chung dropdowns: A (huyen), B (cum), C (tram)
-  populateDropdown(sheetDT, meta.sheet.huyen, '#drop_huyen_chung', true);
-  populateDropdown(sheetDT, meta.sheet.cum, '#drop_cum_chung', true);
-  populateDropdown(sheetDT, meta.sheet.tram, '#drop_tram_chung', true);
-  // draw initial full table
-  const f = copyTableWithMap(sheetDT, meta.sheet.lat, meta.sheet.lng, meta.sheet.tram);
-  const view = hideLatLngView(f);
-  drawTable(view, 'table_chung', f, meta.sheet);
-}
-
-function onCalloffLoaded(dt){
-  calloffDT = dt;
-  const ncol = calloffDT.getNumberOfColumns();
-  meta.calloff.lat = ncol - 2;
-  meta.calloff.lng = ncol - 1;
-  // populate calloff dropdowns: tram col A (0), huyen Q (16)
-  populateDropdown(calloffDT, meta.calloff.tram, '#drop_tram_calloff', true);
-  if(meta.calloff.huyenQ < calloffDT.getNumberOfColumns()){
-    populateDropdown(calloffDT, meta.calloff.huyenQ, '#drop_huyen_calloff', true);
-  }
-  const f = copyTableWithMap(calloffDT, meta.calloff.lat, meta.calloff.lng, meta.calloff.tram);
-  const view = hideLatLngView(f);
-  drawTable(view, 'table_calloff', f, meta.calloff);
-}
-
-/* =========== UTIL: build copy with map & hide lat/lng =========== */
-// copy source DataTable into new DataTable and append 'Bản đồ' column (string)
-function copyTableWithMap(dtSrc, latIdx, lngIdx, tramIdx){
-  const f = new google.visualization.DataTable();
-  const cols = dtSrc.getNumberOfColumns();
-  for(let c=0;c<cols;c++) f.addColumn(dtSrc.getColumnType(c), dtSrc.getColumnLabel(c));
-  f.addColumn('string','Bản đồ');
-  for(let r=0;r<dtSrc.getNumberOfRows();r++){
-    const row = [];
-    for(let c=0;c<cols;c++) row.push(dtSrc.getValue(r,c));
-    const lat = (latIdx>=0 && latIdx<cols) ? dtSrc.getValue(r, latIdx) : null;
-    const lng = (lngIdx>=0 && lngIdx<cols) ? dtSrc.getValue(r, lngIdx) : null;
-    const tram = (tramIdx>=0 && tramIdx<cols) ? dtSrc.getValue(r, tramIdx) : '';
-    let mapCell = '';
-    if(lat!==null && lng!==null && String(lat).trim() !== '' && String(lng).trim() !== ''){
-      mapCell = `<a href="https://www.google.com/maps?q=${lat},${lng} (${encodeURIComponent(tram||'')})" target="_blank" style="color:${'var(--mapLink)'}">Xem bản đồ</a>`;
-    }
-    row.push(mapCell);
-    f.addRow(row);
-  }
-  return f;
-}
-
-// hide the two columns that were originally lat/lng (they are the two columns before the last 'Bản đồ' column)
-function hideLatLngView(dt){
-  const view = new google.visualization.DataView(dt);
-  const totalCols = dt.getNumberOfColumns();
-  // The last column is 'Bản đồ', the two before last should be lat/lng original; remove them
-  const remove1 = totalCols - 3;
-  const remove2 = totalCols - 2;
-  const cols = [];
-  for(let c=0;c<totalCols;c++){
-    if(c===remove1 || c===remove2) continue;
-    cols.push(c);
-  }
-  view.setColumns(cols);
-  return view;
-}
-
-/* =========== Dropdowns & suggestions =========== */
-function populateDropdown(dt, colIndex, selector, includeBlank){
-  const set = new Set();
-  if(colIndex < 0) return;
-  for(let r=0;r<dt.getNumberOfRows();r++){
-    const v = dt.getValue(r, colIndex);
-    if(v !== null && v !== undefined && String(v).trim() !== '') set.add(String(v));
-  }
-  const arr = Array.from(set).sort();
-  const sel = document.querySelector(selector);
-  if(!sel) return;
-  sel.innerHTML = includeBlank ? '<option value="">--Chọn--</option>' : '';
-  arr.forEach(v=>{
-    const opt = document.createElement('option'); opt.value = v; opt.textContent = v; sel.appendChild(opt);
+function loadSheet(url,cb){
+  const q=new google.visualization.Query(url);
+  q.send(r=>{
+    if(r.isError()){alert('Lỗi tải dữ liệu');return;}
+    cb(r.getDataTable());
   });
 }
 
-function buildSuggestionsFrom(dt, cols, q){
-  const s = new Set();
-  const ql = String(q).toLowerCase();
-  for(let r=0;r<dt.getNumberOfRows();r++){
-    for(const c of cols){
-      if(c<0 || c>=dt.getNumberOfColumns()) continue;
-      const v = dt.getValue(r,c);
-      if(v && String(v).toLowerCase().includes(ql)) s.add(String(v));
-    }
+function renderChung(dt){
+  populateDropdown(dt,0,'#drop_huyen_chung');
+  populateDropdown(dt,1,'#drop_cum_chung');
+  populateDropdown(dt,2,'#drop_tram_chung');
+  drawTable(dt,'table_chung');
+}
+function renderCalloff(dt){
+  populateDropdown(dt,0,'#drop_tram_calloff');
+  populateDropdown(dt,16,'#drop_huyen_calloff');
+  drawTable(dt,'table_calloff');
+}
+function populateDropdown(dt,col,sel){
+  const s=new Set();
+  for(let i=0;i<dt.getNumberOfRows();i++){
+    const v=dt.getValue(i,col); if(v) s.add(v);
   }
-  return Array.from(s);
+  const el=$(sel); el.empty().append('<option value="">--Chọn--</option>');
+  Array.from(s).sort().forEach(v=>el.append(`<option>${v}</option>`));
 }
-
-/* =========== Binding UI =========== */
-function bindUI(){
-  // CHUNG autocomplete
-  $('#inputChung').on('input', function(){
-    $('#suggestions').empty();
-    const v = $(this).val().trim();
-    if(!v || !sheetDT) return;
-    const suggestions = buildSuggestionsFrom(sheetDT, [meta.sheet.tram, meta.sheet.cum, meta.sheet.huyen], v);
-    suggestions.slice(0,20).forEach(s=>{
-      $('<div>').text(s).appendTo('#suggestions').click(function(){
-        $('#inputChung').val(''); $('#suggestions').empty();
-        filterByKeyword(sheetDT, s, 'table_chung', meta.sheet);
-      });
-    });
-  });
-  // CHUNG dropdowns change
-  $('#drop_huyen_chung').on('change', function(){ const v=this.value; if(!v) resetChung(); else filterByKeyword(sheetDT, v, 'table_chung', meta.sheet); });
-  $('#drop_cum_chung').on('change', function(){ const v=this.value; if(!v) resetChung(); else filterByKeyword(sheetDT, v, 'table_chung', meta.sheet); });
-  $('#drop_tram_chung').on('change', function(){ const v=this.value; if(!v) resetChung(); else filterByKeyword(sheetDT, v, 'table_chung', meta.sheet); });
-
-  // CALLOFF autocomplete
-  $('#inputCalloff').on('input', function(){
-    $('#suggestionsCalloff').empty();
-    const v = $(this).val().trim();
-    if(!v || !calloffDT) return;
-    const suggestions = buildSuggestionsFrom(calloffDT, [meta.calloff.tram, meta.calloff.huyenQ], v);
-    suggestions.slice(0,20).forEach(s=>{
-      $('<div>').text(s).appendTo('#suggestionsCalloff').click(function(){
-        $('#inputCalloff').val(''); $('#suggestionsCalloff').empty();
-        filterByKeyword(calloffDT, s, 'table_calloff', meta.calloff);
-      });
-    });
-  });
-  // CALLOFF dropdowns
-  $('#drop_tram_calloff').on('change', function(){ const v=this.value; if(!v) resetCalloff(); else filterByKeyword(calloffDT, v, 'table_calloff', meta.calloff); });
-  $('#drop_huyen_calloff').on('change', function(){ const v=this.value; if(!v) resetCalloff(); else filterByKeyword(calloffDT, v, 'table_calloff', meta.calloff); });
-
-  // Summary filter
-  $('#summaryFilter').on('change', function(){
-    const mode = $('#summaryArea').data('mode');
-    if(mode) renderSummary(mode);
-  });
+function drawTable(dt,container){
+  const t=new google.visualization.Table(document.getElementById(container));
+  t.draw(dt,{showRowNumber:true,width:'100%',page:'enable',pageSize:20});
 }
-
-/* =========== Filtering helpers =========== */
-function filterByKeyword(dtSource, keyword, containerId, metaObj){
-  if(!dtSource) return;
-  const rows = [];
-  for(let r=0;r<dtSource.getNumberOfRows();r++){
-    for(let c=0;c<dtSource.getNumberOfColumns();c++){
-      const v = dtSource.getValue(r,c);
-      if(v && String(v).toLowerCase().includes(String(keyword).toLowerCase())){
-        rows.push(r); break;
-      }
-    }
-  }
-  const f = buildFilteredTable(dtSource, rows, metaObj);
-  const view = hideLatLngView(f);
-  drawTable(view, containerId, f, metaObj);
-}
-
-function buildFilteredTable(dtSource, selectedRows, metaObj){
-  const f = new google.visualization.DataTable();
-  const cols = dtSource.getNumberOfColumns();
-  for(let c=0;c<cols;c++) f.addColumn(dtSource.getColumnType(c), dtSource.getColumnLabel(c));
-  f.addColumn('string','Bản đồ');
-  for(const r of selectedRows){
-    const row = [];
-    for(let c=0;c<cols;c++) row.push(dtSource.getValue(r,c));
-    const lat = (metaObj && metaObj.lat>=0) ? dtSource.getValue(r, metaObj.lat) : dtSource.getValue(r, cols-2);
-    const lng = (metaObj && metaObj.lng>=0) ? dtSource.getValue(r, metaObj.lng) : dtSource.getValue(r, cols-1);
-    const tram = (metaObj && metaObj.tram>=0) ? dtSource.getValue(r, metaObj.tram) : dtSource.getValue(r,0);
-    let mapCell = '';
-    if(lat !== null && lng !== null && String(lat).trim() !== '' && String(lng).trim() !== '') mapCell = `<a href="https://www.google.com/maps?q=${lat},${lng} (${encodeURIComponent(tram||'')})" target="_blank">Xem bản đồ</a>`;
-    row.push(mapCell);
-    f.addRow(row);
-  }
-  return f;
-}
-
-/* Reset */
-function resetChung(){
-  if(!sheetDT) return;
-  const f = copyTableWithMap(sheetDT, meta.sheet.lat, meta.sheet.lng, meta.sheet.tram);
-  const view = hideLatLngView(f);
-  drawTable(view, 'table_chung', f, meta.sheet);
-  $('#drop_huyen_chung,#drop_cum_chung,#drop_tram_chung').val('');
-  $('#inputChung').val(''); $('#suggestions').empty();
-}
-function resetCalloff(){
-  if(!calloffDT) return;
-  const f = copyTableWithMap(calloffDT, meta.calloff.lat, meta.calloff.lng, meta.calloff.tram);
-  const view = hideLatLngView(f);
-  drawTable(view, 'table_calloff', f, meta.calloff);
-  $('#drop_tram_calloff,#drop_huyen_calloff').val('');
-  $('#inputCalloff').val(''); $('#suggestionsCalloff').empty();
-}
-
-/* =========== drawTable: paint rows and hide lat/lng =========== */
-function drawTable(dtView, containerId, f, metaObj){
-  const table = new google.visualization.Table(document.getElementById(containerId));
-  google.visualization.events.addListener(table,'ready', function(){
-    const tbl = document.querySelector('#'+containerId+' table');
-    if(!tbl) return;
-    const tbody = tbl.querySelector('tbody');
-    if(!tbody) return;
-    const rows = tbody.querySelectorAll('tr');
-    for(let i=0;i<rows.length;i++){
-      const tr = rows[i];
-      // colorize using f (source for values)
-      try{
-        const valF = f.getValue(i, metaObj && metaObj.lap !== undefined ? metaObj.lap : 5);
-        const valG = f.getValue(i, metaObj && metaObj.tich !== undefined ? metaObj.tich : 6);
-        const isLap = (valF === 1 || valF === '1');
-        const isTich = (valG === 1 || valG === '1');
-        tr.classList.remove('row-installed','row-integrated');
-        if(isLap && isTich) tr.classList.add('row-integrated');
-        else if(isLap && !isTich) tr.classList.add('row-installed');
-      }catch(e){}
-      // defensive hide numeric trailing columns
-      const cells = tr.querySelectorAll('td');
-      if(cells.length>=2){
-        const last = cells[cells.length-1], second = cells[cells.length-2];
-        if(last && /^-?\d+(\.\d+)?$/.test(last.innerText.trim())) last.style.display='none';
-        if(second && /^-?\d+(\.\d+)?$/.test(second.innerText.trim())) second.style.display='none';
-      }
-    }
-  });
-  table.draw(dtView, {showRowNumber:true, allowHtml:true, width:'100%', page:'enable', pageSize:20});
-}
-
-/* =========== SUMMARY / DETAIL ========= */
-function renderSummary(mode){
-  if(!sheetDT) return;
-  const groupCol = (mode==='huyen') ? meta.sheet.huyen : meta.sheet.cum;
-  const map = new Map();
-  for(let r=0;r<sheetDT.getNumberOfRows();r++){
-    const key = String(sheetDT.getValue(r, groupCol) || '(Không xác định)');
-    if(!map.has(key)) map.set(key, {total:0, lap:0, tich:0, rows:[]});
-    const obj = map.get(key);
-    obj.total++;
-    const lap = sheetDT.getValue(r, meta.sheet.lap);
-    const tich = sheetDT.getValue(r, meta.sheet.tich);
-    if(lap==1 || lap==='1') obj.lap++;
-    if(tich==1 || tich==='1') obj.tich++;
-    obj.rows.push(r);
-  }
-  let html = `<table border="1" cellpadding="6" style="width:100%;border-collapse:collapse"><thead style="background:#f0f4ff"><tr><th>STT</th><th>${mode==='huyen'?'Huyện':'Cụm'}</th><th>Tổng</th><th>Đã lắp</th><th>Đã tích hợp</th><th>% Lắp</th><th>% Tích hợp</th><th></th></tr></thead><tbody>`;
-  let i=0;
-  Array.from(map.entries()).sort((a,b)=>b[1].total - a[1].total).forEach(([k,v])=>{
-    i++;
-    const pctLap = v.total ? Math.round(v.lap*100/v.total) : 0;
-    const pctTich = v.total ? Math.round(v.tich*100/v.total) : 0;
-    html += `<tr>
-      <td style="text-align:center">${i}</td>
-      <td>${escapeHtml(k)}</td>
-      <td style="text-align:center">${v.total}</td>
-      <td style="text-align:center">${v.lap}</td>
-      <td style="text-align:center">${v.tich}</td>
-      <td style="text-align:center">${pctLap}%</td>
-      <td style="text-align:center">${pctTich}%</td>
-      <td style="text-align:center"><button class="small-btn" onclick="showGroupDetail('${escapeJs(k)}','${mode}')">Xem</button></td>
-    </tr>`;
-  });
-  html += `</tbody></table>`;
-  $('#summaryArea').html(html).data('mode', mode);
-  $('#summaryDetail').html('');
-}
-
-function showGroupDetail(key, mode){
-  if(!sheetDT) return;
-  const groupCol = (mode==='huyen') ? meta.sheet.huyen : meta.sheet.cum;
-  const rows = [];
-  for(let r=0;r<sheetDT.getNumberOfRows();r++){
-    if(String(sheetDT.getValue(r, groupCol) || '') === key) rows.push(r);
-  }
-  if(rows.length===0){ $('#summaryDetail').html('<p>Không có dữ liệu</p>'); return; }
-  const f = new google.visualization.DataTable();
-  for(let c=0;c<sheetDT.getNumberOfColumns();c++) f.addColumn(sheetDT.getColumnType(c), sheetDT.getColumnLabel(c));
-  f.addColumn('string','Bản đồ');
-  rows.forEach(r=>{
-    const row = [];
-    for(let c=0;c<sheetDT.getNumberOfColumns();c++) row.push(sheetDT.getValue(r,c));
-    const lat = sheetDT.getValue(r, meta.sheet.lat);
-    const lng = sheetDT.getValue(r, meta.sheet.lng);
-    const tram = sheetDT.getValue(r, meta.sheet.tram);
-    let mapCell = '';
-    if(lat && lng) mapCell = `<a href="https://www.google.com/maps?q=${lat},${lng} (${encodeURIComponent(tram||'')})" target="_blank">Xem bản đồ</a>`;
-    row.push(mapCell);
-    f.addRow(row);
-  });
-  const view = hideLatLngView(f);
-  $('#summaryDetail').html(`<h4>Chi tiết ${mode==='huyen'?'Huyện':'Cụm'}: ${escapeHtml(key)}</h4><div id="detail_table"></div>`);
-  drawTable(view, 'detail_table', f, meta.sheet);
-}
-
-/* =========== Utility escape =========== */
-function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function escapeJs(s){ return String(s).replace(/'/g,"\\'").replace(/"/g,'\\"'); }
-
-/* =========== Bind UI (called once) =========== */
-function bindUI(){
-  // nothing else now - handlers are added on initAll load
-}
-
-/* =========== Start: call when Google Charts ready =========== */
-function initApp(){ bindUI(); /* sheet/calloff loads triggered elsewhere */ }
-
-/* Helper: show tab (global) */
-function showTab(name, btn){
-  $('nav button').removeClass('active'); $(btn).addClass('active');
+function resetChung(){if(sheetDT)drawTable(sheetDT,'table_chung');}
+function resetCalloff(){if(calloffDT)drawTable(calloffDT,'table_calloff');}
+function showTab(tab,btn){
+  $('nav button').removeClass('active');$(btn).addClass('active');
   $('#tab-chung,#tab-calloff,#tab-tong').hide();
-  if(name==='chung') $('#tab-chung').show();
-  if(name==='calloff') $('#tab-calloff').show();
-  if(name==='tong') $('#tab-tong').show();
+  $(`#tab-${tab}`).show();
 }
 </script>
 </body>
