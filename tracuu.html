@@ -142,13 +142,13 @@ function loadSheet(sheetName,key,isTotal=false){
     let tramCol=0, cumCol=1, huyenCol=2, lapCol=5, tichhopCol=6, phoneCol=dt.getNumberOfColumns()-3;
     let latCol=dt.getNumberOfColumns()-2, lngCol=dt.getNumberOfColumns()-1;
 
-    // SĐT clickable
+    // SĐT có thể bấm gọi
     for(let r=0;r<dt.getNumberOfRows();r++){
       const val=dt.getValue(r,phoneCol);
       if(val) dt.setValue(r,phoneCol,`<a href="tel:${val}">${val}</a>`);
     }
 
-    // Thêm cột Bản đồ
+    // Thêm cột bản đồ
     const mapCol=dt.addColumn('string','Bản đồ');
     for(let r=0;r<dt.getNumberOfRows();r++){
       const lat=dt.getValue(r,latCol);
@@ -159,10 +159,7 @@ function loadSheet(sheetName,key,isTotal=false){
       } else dt.setValue(r,mapCol,'');
     }
 
-    // Ẩn cột tọa độ
-    const view=new google.visualization.DataView(dt);
-    const hideCols=[]; for(let i=0;i<dt.getNumberOfColumns();i++) if(i!==latCol && i!==lngCol) hideCols.push(i);
-    view.setColumns(hideCols);
+    const view = hideLatLng(dt, latCol, lngCol);
 
     const sug=[];
     for(let r=0;r<dt.getNumberOfRows();r++){
@@ -171,10 +168,20 @@ function loadSheet(sheetName,key,isTotal=false){
       sug.push((dt.getValue(r,huyenCol)||'')+' (Huyện)');
     }
 
-    if(key==='chung'){ dataChung=view; drawTable(view,'table_chung'); initAuto('search_chung',dt,sug,'table_chung',tramCol,cumCol,huyenCol); }
-    if(key==='calloff'){ dataCalloff=view; drawTable(view,'table_calloff'); initAuto('search_calloff',dt,sug,'table_calloff',tramCol,cumCol,huyenCol); }
+    if(key==='chung'){ dataChung=view; drawTable(view,'table_chung'); initAuto('search_chung',dt,sug,'table_chung',tramCol,cumCol,huyenCol,latCol,lngCol); }
+    if(key==='calloff'){ dataCalloff=view; drawTable(view,'table_calloff'); initAuto('search_calloff',dt,sug,'table_calloff',tramCol,cumCol,huyenCol,latCol,lngCol); }
     if(key==='total'){ dataTotal=view; drawTable(view,'table_total'); setupFilterTotal(view,tramCol,cumCol,huyenCol,lapCol,tichhopCol); updateTotalCount(view,lapCol,tichhopCol); }
   });
+}
+
+function hideLatLng(dt,latCol,lngCol){
+  const view=new google.visualization.DataView(dt);
+  const cols=[];
+  for(let i=0;i<dt.getNumberOfColumns();i++){
+    if(i!==latCol && i!==lngCol) cols.push(i);
+  }
+  view.setColumns(cols);
+  return view;
 }
 
 function drawTable(dt,divId){
@@ -192,7 +199,7 @@ function highlightRow(divId,rowIndex){
   if(rows[rowIndex+1]) rows[rowIndex+1].classList.add('highlight-row');
 }
 
-function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol){
+function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol,latCol,lngCol){
   const inp=document.getElementById(inpId);
   inp.addEventListener('input',function(){
     const val=this.value.toLowerCase(); closeAllLists();
@@ -205,6 +212,7 @@ function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol){
         item.addEventListener('click',function(){
           const text=this.innerText.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
           let col=tramCol; if(this.innerText.includes('(Cụm)')) col=cumCol; else if(this.innerText.includes('(Huyện)')) col=huyenCol;
+
           const f=new google.visualization.DataTable();
           for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c),dt.getColumnLabel(c));
           for(let r=0;r<dt.getNumberOfRows();r++){
@@ -213,7 +221,10 @@ function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol){
               f.addRow(row);
             }
           }
-          drawTable(f,tableDiv);
+
+          // ẩn tọa độ trước khi hiển thị
+          const filtered = hideLatLng(f, latCol, lngCol);
+          drawTable(filtered,tableDiv);
           inp.value='';
         });
         list.appendChild(item); count++;
@@ -252,7 +263,8 @@ function filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol){
       f.addRow(row);
     }
   }
-  drawTable(f,'table_total');
+  const filtered = hideLatLng(f, f.getNumberOfColumns()-3, f.getNumberOfColumns()-2);
+  drawTable(filtered,'table_total');
   updateTotalCount(f,lapCol,tichhopCol);
 }
 
