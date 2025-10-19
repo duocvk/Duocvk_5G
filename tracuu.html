@@ -6,54 +6,19 @@
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f5f6fa;
-  margin: 0;
-}
-header {
-  background: #0078d7;
-  color: white;
-  padding: 12px;
-  text-align: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-nav {
-  background: #eaeaea;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  padding: 10px;
-}
-nav button {
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 6px 14px;
-  cursor: pointer;
-  font-weight: bold;
-}
-nav button.active {
-  background: #0078d7;
-  color: white;
-  border-color: #0078d7;
-}
+body { font-family: Arial, sans-serif; background: #f5f6fa; margin: 0; }
+header { background: #0078d7; color: white; padding: 12px; text-align: center; font-size: 20px; font-weight: bold; }
+nav { background: #eaeaea; display: flex; justify-content: center; gap: 10px; padding: 10px; }
+nav button { background: white; border: 1px solid #ccc; border-radius: 6px; padding: 6px 14px; cursor: pointer; font-weight: bold; }
+nav button.active { background: #0078d7; color: white; border-color: #0078d7; }
 .container { padding: 20px; }
-input[type="text"] {
-  width: 300px; padding: 6px; border-radius: 6px; border: 1px solid #ccc;
-}
+input[type="text"], select { width: 300px; padding: 6px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 8px; }
 #suggestions, #suggestionsCalloff {
   position: absolute; background: white; border: 1px solid #ccc;
-  border-radius: 6px; max-height: 200px; overflow-y: auto;
-  width: 300px; z-index: 999;
+  border-radius: 6px; max-height: 200px; overflow-y: auto; width: 300px; z-index: 999;
 }
-#suggestions div, #suggestionsCalloff div {
-  padding: 5px 10px; cursor: pointer;
-}
-#suggestions div:hover, #suggestionsCalloff div:hover {
-  background: #d1eaff;
-}
+#suggestions div, #suggestionsCalloff div { padding: 5px 10px; cursor: pointer; }
+#suggestions div:hover, #suggestionsCalloff div:hover { background: #d1eaff; }
 .google-visualization-table-table {
   border-collapse: collapse !important; width: 100% !important;
 }
@@ -61,25 +26,21 @@ input[type="text"] {
 .google-visualization-table-table th {
   border: 1px solid #ddd !important; padding: 5px !important;
 }
-tr.highlighted { outline: 2px solid #0078d7; }
-#login {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; height: 80vh;
-}
-#login input {
-  margin: 6px; padding: 8px; border: 1px solid #ccc;
-  border-radius: 6px;
-}
-#logout {
-  position: absolute; right: 10px; top: 10px;
-  background: #ff6b6b; border: none; color: white;
-  padding: 6px 10px; border-radius: 6px; cursor: pointer;
+#login { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; }
+#login input { margin: 6px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
+#logout { position: absolute; right: 10px; top: 10px; background: #ff6b6b; border: none; color: white; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+tr.daLap { background: #fff6a3 !important; }
+tr.daTichHop { background: #d1eaff !important; }
+button.detail-btn {
+  background: #0078d7; color: white; border: none; padding: 4px 8px;
+  border-radius: 4px; cursor: pointer;
 }
 </style>
 </head>
 
 <body>
 <header>HỆ THỐNG TRA CỨU 5G</header>
+
 <div id="login">
   <h2>Đăng nhập</h2>
   <input type="text" id="username" placeholder="Tên đăng nhập">
@@ -97,6 +58,7 @@ tr.highlighted { outline: 2px solid #0078d7; }
   </nav>
 
   <div class="container">
+    <!-- TAB TRA CỨU CHUNG -->
     <div id="tab-chung" class="tab">
       <h3>Tra cứu chung</h3>
       <input type="text" id="searchBox" placeholder="Nhập mã trạm, cụm, huyện...">
@@ -104,18 +66,22 @@ tr.highlighted { outline: 2px solid #0078d7; }
       <div id="table_div"></div>
     </div>
 
+    <!-- TAB CALL OFF -->
     <div id="tab-calloff" class="tab" style="display:none;">
       <h3>Tra cứu Calloff</h3>
+      <select id="filterHuyenCalloff"><option value="">--Chọn Huyện--</option></select>
       <input type="text" id="searchCalloff" placeholder="Nhập mã trạm...">
       <div id="suggestionsCalloff"></div>
       <div id="table_calloff"></div>
     </div>
 
+    <!-- TAB TỔNG HỢP -->
     <div id="tab-tong" class="tab" style="display:none;">
       <h3>Tổng hợp theo Huyện hoặc Cụm</h3>
       <button onclick="buildSummary('Huyện')">Theo Huyện</button>
       <button onclick="buildSummary('Cụm')">Theo Cụm</button>
       <div id="tong_div"></div>
+      <div id="tong_chitiet"></div>
     </div>
   </div>
 </div>
@@ -124,7 +90,7 @@ tr.highlighted { outline: 2px solid #0078d7; }
 google.charts.load('current', {'packages':['table']});
 const sheetURL = 'https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=sheet';
 const calloffURL = 'https://docs.google.com/spreadsheets/d/1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8/gviz/tq?sheet=calloff';
-let sheetData = null;
+let sheetData = null, calloffData = null;
 
 function login(){
   const u=document.getElementById('username').value;
@@ -156,8 +122,10 @@ function initData(){
     drawTable(dt, 'table_div');
   });
   querySheet(calloffURL, function(dt){
+    calloffData = dt;
     buildSuggestions(dt, '#searchCalloff', '#suggestionsCalloff', 'table_calloff');
     drawTable(dt, 'table_calloff');
+    buildHuyenList(dt);
   });
 }
 
@@ -166,6 +134,7 @@ function querySheet(url, cb){
   q.send(r=>{ if(r.isError()) alert('Lỗi tải dữ liệu'); else cb(r); });
 }
 
+// Gợi ý tìm kiếm
 function buildSuggestions(dt, inputSel, sugSel, tableId){
   const data = [];
   for(let i=0;i<dt.getDataTable().getNumberOfRows();i++){
@@ -187,6 +156,7 @@ function buildSuggestions(dt, inputSel, sugSel, tableId){
   });
 }
 
+// Lọc dữ liệu
 function filterData(keyword, divId, dt){
   const view=new google.visualization.DataView(dt.getDataTable());
   const rows=[];
@@ -202,6 +172,7 @@ function filterData(keyword, divId, dt){
   drawTable(view, divId);
 }
 
+// Vẽ bảng + tô màu + ẩn lat long
 function drawTable(dt, divId){
   const t=new google.visualization.Table(document.getElementById(divId));
   google.visualization.events.addListener(t,'ready',function(){
@@ -211,8 +182,8 @@ function drawTable(dt, divId){
       if(c.length<8) return;
       const daLap=c[5]?.innerText.trim()==='1';
       const daTich=c[6]?.innerText.trim()==='1';
-      if(daLap&&!daTich) r.style.background='#fff6a3';
-      if(daLap&&daTich) r.style.background='#d1eaff';
+      if(daLap&&!daTich) r.classList.add('daLap');
+      if(daLap&&daTich) r.classList.add('daTichHop');
       const lat=c[c.length-2]?.innerText;
       const lon=c[c.length-1]?.innerText;
       const tram=c[0]?.innerText;
@@ -225,6 +196,24 @@ function drawTable(dt, divId){
     });
   });
   t.draw(dt,{showRowNumber:true,width:'100%',allowHtml:true,page:'enable',pageSize:20});
+}
+
+// Danh sách huyện (Calloff)
+function buildHuyenList(dt){
+  const listH=[];
+  for(let i=0;i<dt.getDataTable().getNumberOfRows();i++){
+    const h=dt.getDataTable().getValue(i,0);
+    if(h&&!listH.includes(h)) listH.push(h);
+  }
+  listH.sort();
+  const sel=document.getElementById('filterHuyenCalloff');
+  listH.forEach(h=>{
+    const opt=document.createElement('option'); opt.value=h; opt.textContent=h; sel.appendChild(opt);
+  });
+  sel.onchange=function(){
+    if(!this.value) drawTable(dt,'table_calloff');
+    else filterData(this.value,'table_calloff',dt);
+  };
 }
 
 // Tổng hợp
@@ -242,12 +231,29 @@ function buildSummary(type){
     if(daLap) sum[key].lap++;
     if(daTich) sum[key].tich++;
   }
-  let html=`<table border=1 cellpadding=5><tr><th>${type}</th><th>Tổng</th><th>Đã lắp</th><th>Đã tích hợp</th><th>% Lắp</th><th>% Tích hợp</th></tr>`;
+  let html=`<table border=1 cellpadding=5><tr><th>${type}</th><th>Tổng</th><th>Đã lắp</th><th>Đã tích hợp</th><th>% Lắp</th><th>% Tích hợp</th><th>Chi tiết</th></tr>`;
   for(const [k,v] of Object.entries(sum)){
-    html+=`<tr><td>${k}</td><td>${v.tong}</td><td>${v.lap}</td><td>${v.tich}</td><td>${((v.lap/v.tong)*100).toFixed(1)}%</td><td>${((v.tich/v.tong)*100).toFixed(1)}%</td></tr>`;
+    html+=`<tr><td>${k}</td><td>${v.tong}</td><td>${v.lap}</td><td>${v.tich}</td>
+      <td>${((v.lap/v.tong)*100).toFixed(1)}%</td><td>${((v.tich/v.tong)*100).toFixed(1)}%</td>
+      <td><button class="detail-btn" onclick="xemChiTiet('${type}','${k}')">Xem</button></td></tr>`;
   }
   html+='</table>';
   document.getElementById('tong_div').innerHTML=html;
+  document.getElementById('tong_chitiet').innerHTML='';
+}
+
+// Xem chi tiết huyện/cụm
+function xemChiTiet(type, key){
+  const dt=sheetData.getDataTable();
+  const col=(type==='Huyện')?0:1;
+  const view=new google.visualization.DataView(dt);
+  const rows=[];
+  for(let i=0;i<dt.getNumberOfRows();i++){
+    if((dt.getValue(i,col)||'')===key) rows.push(i);
+  }
+  view.setRows(rows);
+  document.getElementById('tong_chitiet').innerHTML=`<h4>Chi tiết ${type}: ${key}</h4><div id="chitiet_table"></div>`;
+  drawTable(view,'chitiet_table');
 }
 </script>
 </body>
