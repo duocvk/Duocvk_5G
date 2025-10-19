@@ -5,60 +5,111 @@
 <title>Tra cứu trạm 5G</title>
 <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 <style>
-body { font-family: Arial, sans-serif; margin:20px; background:#f9f9f9; }
+body { font-family: Arial, sans-serif; margin:0; background:#f7f9fb; }
 h2 { margin-bottom:10px; }
+.container { padding:20px; }
+
 .tabs { display:flex; margin-bottom:10px; }
 .tab { padding:10px 20px; cursor:pointer; background:#eee; margin-right:5px; border-radius:5px 5px 0 0; }
 .tab.active { background:#4285F4; color:white; font-weight:bold; }
 .tab-content { display:none; background:white; padding:15px; border-radius:0 5px 5px 5px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
 .tab-content.active { display:block; }
+
 #autocomplete-list { border:1px solid #d4d4d4; max-height:150px; overflow-y:auto; position:absolute; background:white; z-index:99; width:100%; }
 .autocomplete-item { padding:5px; cursor:pointer; }
 .autocomplete-item:hover { background:#e9e9e9; }
+
+.highlight-row { background-color:#d1eaff !important; }
+
+#login-box { display:flex; justify-content:center; align-items:center; height:100vh; }
+#login-form { background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.2); width:300px; text-align:center; }
+#login-form input { width:90%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:5px; }
+#login-form button { background:#4285F4; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; margin-top:10px; }
+#logout-btn { float:right; margin-top:-35px; cursor:pointer; color:#4285F4; }
+
 #filter_div select { margin-right:10px; padding:5px; }
 #total_ok { margin:10px 0; font-weight:bold; color:#333; }
 </style>
 </head>
 <body>
-<h2>Tra cứu trạm 5G</h2>
 
-<div class="tabs">
-  <div class="tab active" data-target="tab_chung">Tra cứu chung</div>
-  <div class="tab" data-target="tab_calloff">Tra cứu Calloff</div>
-  <div class="tab" data-target="tab_total">Tổng trạm đã lắp</div>
+<div id="login-box">
+  <div id="login-form">
+    <h3>Đăng nhập</h3>
+    <input type="text" id="username" placeholder="Tên đăng nhập">
+    <input type="password" id="password" placeholder="Mật khẩu">
+    <button onclick="login()">Đăng nhập</button>
+    <p id="login-msg" style="color:red;"></p>
+  </div>
 </div>
 
-<div class="tab-content active" id="tab_chung">
-  <div style="position:relative; width:300px;">
-    <input type="text" id="search_chung" placeholder="Nhập mã trạm, cụm hoặc huyện">
-  </div>
-  <div id="table_chung" style="margin-top:20px;"></div>
-</div>
+<div id="main-app" style="display:none;" class="container">
+  <h2>Tra cứu trạm 5G</h2>
+  <span id="logout-btn" onclick="logout()">Đăng xuất</span>
 
-<div class="tab-content" id="tab_calloff">
-  <div style="position:relative; width:300px;">
-    <input type="text" id="search_calloff" placeholder="Nhập mã trạm, cụm hoặc huyện">
+  <div class="tabs">
+    <div class="tab active" data-target="tab_chung">Tra cứu chung</div>
+    <div class="tab" data-target="tab_calloff">Tra cứu Calloff</div>
+    <div class="tab" data-target="tab_total">Tổng trạm đã lắp</div>
   </div>
-  <div id="table_calloff" style="margin-top:20px;"></div>
-</div>
 
-<div class="tab-content" id="tab_total">
-  <div id="filter_div">
-    <select id="filter_huyen"></select>
-    <select id="filter_cum"></select>
-    <select id="filter_type">
-      <option value="">Tất cả trạm</option>
-      <option value="lapdat">Trạm đã lắp đặt</option>
-      <option value="tichhop">Trạm đã tích hợp</option>
-    </select>
+  <div class="tab-content active" id="tab_chung">
+    <div style="position:relative; width:300px;">
+      <input type="text" id="search_chung" placeholder="Nhập mã trạm, cụm hoặc huyện">
+    </div>
+    <div id="table_chung" style="margin-top:20px;"></div>
   </div>
-  <div id="total_ok"></div>
-  <div id="table_total" style="margin-top:20px;"></div>
+
+  <div class="tab-content" id="tab_calloff">
+    <div style="position:relative; width:300px;">
+      <input type="text" id="search_calloff" placeholder="Nhập mã trạm, cụm hoặc huyện">
+    </div>
+    <div id="table_calloff" style="margin-top:20px;"></div>
+  </div>
+
+  <div class="tab-content" id="tab_total">
+    <div id="filter_div">
+      <select id="filter_huyen"></select>
+      <select id="filter_cum"></select>
+      <select id="filter_type">
+        <option value="">Tất cả trạm</option>
+        <option value="lapdat">Trạm đã lắp đặt</option>
+        <option value="tichhop">Trạm đã tích hợp</option>
+      </select>
+    </div>
+    <div id="total_ok"></div>
+    <div id="table_total" style="margin-top:20px;"></div>
+  </div>
 </div>
 
 <script>
 google.charts.load('current', {'packages':['table']});
-google.charts.setOnLoadCallback(initApp);
+google.charts.setOnLoadCallback(checkLogin);
+
+function checkLogin(){
+  if(localStorage.getItem("loggedIn")==="true"){
+    document.getElementById("login-box").style.display="none";
+    document.getElementById("main-app").style.display="block";
+    initApp();
+  }
+}
+
+function login(){
+  const u=document.getElementById("username").value;
+  const p=document.getElementById("password").value;
+  if(u==="admin" && p==="123456"){
+    localStorage.setItem("loggedIn","true");
+    document.getElementById("login-box").style.display="none";
+    document.getElementById("main-app").style.display="block";
+    initApp();
+  } else {
+    document.getElementById("login-msg").innerText="Sai tài khoản hoặc mật khẩu!";
+  }
+}
+function logout(){
+  localStorage.removeItem("loggedIn");
+  location.reload();
+}
 
 let dataChung, dataCalloff, dataTotal;
 
@@ -88,7 +139,6 @@ function loadSheet(sheetName,key,isTotal=false){
     if(resp.isError()){ alert(resp.getMessage()); return; }
     const dt=resp.getDataTable();
 
-    // Xác định cột chính
     let tramCol=0, cumCol=1, huyenCol=2, lapCol=5, tichhopCol=6, phoneCol=dt.getNumberOfColumns()-3;
     let latCol=dt.getNumberOfColumns()-2, lngCol=dt.getNumberOfColumns()-1;
 
@@ -99,16 +149,21 @@ function loadSheet(sheetName,key,isTotal=false){
     }
 
     // Thêm cột Bản đồ
-    dt.addColumn('string','Bản đồ');
+    const mapCol=dt.addColumn('string','Bản đồ');
     for(let r=0;r<dt.getNumberOfRows();r++){
       const lat=dt.getValue(r,latCol);
       const lng=dt.getValue(r,lngCol);
+      const ten=dt.getValue(r,tramCol);
       if(lat && lng){
-        dt.setValue(r,dt.getNumberOfColumns()-1,`<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank">Xem bản đồ</a>`);
-      } else dt.setValue(r,dt.getNumberOfColumns()-1,'');
+        dt.setValue(r,mapCol,`<a href="https://www.google.com/maps?q=${lat},${lng}(${encodeURIComponent(ten)})" target="_blank">Xem bản đồ</a>`);
+      } else dt.setValue(r,mapCol,'');
     }
 
-    // Gợi ý autocomplete
+    // Ẩn cột tọa độ
+    const view=new google.visualization.DataView(dt);
+    const hideCols=[]; for(let i=0;i<dt.getNumberOfColumns();i++) if(i!==latCol && i!==lngCol) hideCols.push(i);
+    view.setColumns(hideCols);
+
     const sug=[];
     for(let r=0;r<dt.getNumberOfRows();r++){
       sug.push((dt.getValue(r,tramCol)||'')+' (Mã trạm)');
@@ -116,19 +171,28 @@ function loadSheet(sheetName,key,isTotal=false){
       sug.push((dt.getValue(r,huyenCol)||'')+' (Huyện)');
     }
 
-    if(key==='chung'){ dataChung=dt; drawTable(dt,'table_chung'); initAuto('search_chung',dt,sug,'table_chung',tramCol,cumCol,huyenCol,phoneCol,lapCol,tichhopCol); }
-    if(key==='calloff'){ dataCalloff=dt; drawTable(dt,'table_calloff'); initAuto('search_calloff',dt,sug,'table_calloff',tramCol,cumCol,huyenCol,phoneCol,lapCol,tichhopCol); }
-    if(key==='total'){ dataTotal=dt; drawTable(dt,'table_total'); setupFilterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol); updateTotalCount(dt,lapCol,tichhopCol); }
+    if(key==='chung'){ dataChung=view; drawTable(view,'table_chung'); initAuto('search_chung',dt,sug,'table_chung',tramCol,cumCol,huyenCol); }
+    if(key==='calloff'){ dataCalloff=view; drawTable(view,'table_calloff'); initAuto('search_calloff',dt,sug,'table_calloff',tramCol,cumCol,huyenCol); }
+    if(key==='total'){ dataTotal=view; drawTable(view,'table_total'); setupFilterTotal(view,tramCol,cumCol,huyenCol,lapCol,tichhopCol); updateTotalCount(view,lapCol,tichhopCol); }
   });
 }
 
-function drawTable(dt,div){
-  new google.visualization.Table(document.getElementById(div)).draw(dt,{
-    showRowNumber:true,width:'100%',height:'100%',allowHtml:true,page:'enable',pageSize:20
+function drawTable(dt,divId){
+  const table=new google.visualization.Table(document.getElementById(divId));
+  google.visualization.events.addListener(table,'select',function(){
+    const sel=table.getSelection()[0];
+    if(sel) highlightRow(divId, sel.row);
   });
+  table.draw(dt,{showRowNumber:true,width:'100%',height:'100%',allowHtml:true,page:'enable',pageSize:20});
 }
 
-function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol,phoneCol,lapCol,tichhopCol){
+function highlightRow(divId,rowIndex){
+  const rows=document.querySelectorAll(`#${divId} table tr`);
+  rows.forEach(r=>r.classList.remove('highlight-row'));
+  if(rows[rowIndex+1]) rows[rowIndex+1].classList.add('highlight-row');
+}
+
+function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol){
   const inp=document.getElementById(inpId);
   inp.addEventListener('input',function(){
     const val=this.value.toLowerCase(); closeAllLists();
@@ -139,18 +203,16 @@ function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol,phoneCol,lapCol,
       if(sug[i].toLowerCase().includes(val)){
         const item=document.createElement('DIV'); item.innerHTML=sug[i]; item.classList.add('autocomplete-item');
         item.addEventListener('click',function(){
-          let valText=this.innerText.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
+          const text=this.innerText.replace(/\s*\(Mã trạm\)|\s*\(Cụm\)|\s*\(Huyện\)/gi,'').toLowerCase();
           let col=tramCol; if(this.innerText.includes('(Cụm)')) col=cumCol; else if(this.innerText.includes('(Huyện)')) col=huyenCol;
-
           const f=new google.visualization.DataTable();
-          for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c), dt.getColumnLabel(c));
+          for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c),dt.getColumnLabel(c));
           for(let r=0;r<dt.getNumberOfRows();r++){
-            if((dt.getValue(r,col)||'').toString().toLowerCase().includes(valText)){
+            if((dt.getValue(r,col)||'').toString().toLowerCase().includes(text)){
               const row=[]; for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c));
               f.addRow(row);
             }
           }
-          for(let r=0;r<f.getNumberOfRows();r++){ const v=f.getValue(r,phoneCol); if(v && !v.includes('tel:')) f.setValue(r,phoneCol,`<a href="tel:${v}">${v}</a>`);}
           drawTable(f,tableDiv);
           inp.value='';
         });
@@ -159,27 +221,27 @@ function initAuto(inpId,dt,sug,tableDiv,tramCol,cumCol,huyenCol,phoneCol,lapCol,
     }
   });
   function closeAllLists(){ const x=document.getElementsByClassName('autocomplete-item'); for(let i=x.length-1;i>=0;i--) x[i].parentNode.remove();}
-  document.addEventListener('click',e=>closeAllLists());
+  document.addEventListener('click',()=>closeAllLists());
 }
 
-function setupFilterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol){
+function setupFilterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol){
   const hSet=new Set(), cSet=new Set();
   for(let r=0;r<dt.getNumberOfRows();r++){ const h=dt.getValue(r,huyenCol)||''; const c=dt.getValue(r,cumCol)||''; if(h) hSet.add(h); if(c) cSet.add(c);}
   const hS=document.getElementById('filter_huyen'), cS=document.getElementById('filter_cum'), tS=document.getElementById('filter_type');
   hS.innerHTML="<option value=''>Tất cả huyện</option>"; cS.innerHTML="<option value=''>Tất cả cụm</option>";
   hSet.forEach(h=>{const o=document.createElement('option'); o.value=h; o.text=h; hS.appendChild(o);});
   cSet.forEach(c=>{const o=document.createElement('option'); o.value=c; o.text=c; cS.appendChild(o);});
-  hS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol);
-  cS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol);
-  tS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol);
+  hS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol);
+  cS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol);
+  tS.onchange=()=>filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol);
 }
 
-function filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol,phoneCol){
+function filterTotal(dt,tramCol,cumCol,huyenCol,lapCol,tichhopCol){
   const h=document.getElementById('filter_huyen').value.toLowerCase();
   const c=document.getElementById('filter_cum').value.toLowerCase();
   const type=document.getElementById('filter_type').value;
   const f=new google.visualization.DataTable();
-  for(let col=0;col<dt.getNumberOfColumns();col++) f.addColumn(dt.getColumnType(col), dt.getColumnLabel(col));
+  for(let col=0;col<dt.getNumberOfColumns();col++) f.addColumn(dt.getColumnType(col),dt.getColumnLabel(col));
   for(let r=0;r<dt.getNumberOfRows();r++){
     const rowH=(dt.getValue(r,huyenCol)||'').toLowerCase();
     const rowC=(dt.getValue(r,cumCol)||'').toLowerCase();
