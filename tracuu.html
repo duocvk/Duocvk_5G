@@ -89,21 +89,23 @@ function loadSheet(sheetName,key,isTotal=false){
     const dt=resp.getDataTable();
 
     // Xác định cột chính
-    let tramCol=0, cumCol=1, huyenCol=2, lapCol=5, tichhopCol=6, phoneCol=dt.getNumberOfColumns()-1;
-    for(let c=0;c<dt.getNumberOfColumns();c++){
-      const lbl=dt.getColumnLabel(c).toLowerCase();
-      if(lbl.includes('mã trạm')||lbl.includes('tram')) tramCol=c;
-      else if(lbl.includes('cụm')||lbl.includes('cum')) cumCol=c;
-      else if(lbl.includes('huyện')||lbl.includes('huyen')) huyenCol=c;
-      else if(lbl.includes('lắp')) lapCol=c;
-      else if(lbl.includes('tích hợp')) tichhopCol=c;
-      else if(lbl.includes('sđt')||lbl.includes('phone')) phoneCol=c;
-    }
+    let tramCol=0, cumCol=1, huyenCol=2, lapCol=5, tichhopCol=6, phoneCol=dt.getNumberOfColumns()-3;
+    let latCol=dt.getNumberOfColumns()-2, lngCol=dt.getNumberOfColumns()-1;
 
-    // Cell phone clickable
+    // SĐT clickable
     for(let r=0;r<dt.getNumberOfRows();r++){
       const val=dt.getValue(r,phoneCol);
       if(val) dt.setValue(r,phoneCol,`<a href="tel:${val}">${val}</a>`);
+    }
+
+    // Thêm cột Bản đồ
+    dt.addColumn('string','Bản đồ');
+    for(let r=0;r<dt.getNumberOfRows();r++){
+      const lat=dt.getValue(r,latCol);
+      const lng=dt.getValue(r,lngCol);
+      if(lat && lng){
+        dt.setValue(r,dt.getNumberOfColumns()-1,`<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank">Xem bản đồ</a>`);
+      } else dt.setValue(r,dt.getNumberOfColumns()-1,'');
     }
 
     // Gợi ý autocomplete
