@@ -146,7 +146,7 @@ async function fetchGviz(url){
   const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
   const raw = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
   // Find first non-empty row index (prefer 0)
-  let headerIndex = 1;
+  let headerIndex = 0;
  / for(let i=0;i<raw.length;i++){
   /  if(raw[i].some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '')){ headerIndex = i; break; }
   }
