@@ -2,441 +2,429 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8" />
-<title>Tra cứu trạm 5G - Full</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<!-- Google Charts và jQuery -->
+<title>Tra cứu trạm 5G - Final</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <style>
-  :root{--blue:#0078d7;--accent:#d1eaff;--accent2:#fff6a3}
+  :root{--blue:#0078d7;--green:#d1eaff;--yellow:#fff6a3}
   body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f6f8fb;color:#222}
-  header{background:var(--blue);color:#fff;padding:12px 18px;font-size:20px;font-weight:600}
-  .container{padding:16px}
-  .card{background:#fff;border-radius:8px;padding:18px;box-shadow:0 6px 18px rgba(0,0,0,0.08);max-width:1000px;margin:10px auto;}
-  .row{display:flex;gap:12px;align-items:center;margin-bottom:10px}
-  input[type=text],input[type=password],select{padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px}
-  button{background:var(--blue);color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
-  button.ghost{background:#fff;color:var(--blue);border:1px solid #cfd8e3}
-  nav{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  header{background:var(--blue);color:#fff;padding:12px 18px;font-size:20px;font-weight:600;text-align:center}
+  .container{padding:16px;max-width:1200px;margin:12px auto}
+  .card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+  nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
   nav button{padding:8px 14px;border-radius:6px;border:1px solid #e0e6ef;background:#fff;cursor:pointer}
   nav button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
-  .tab{background:#fff;padding:12px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.04)}
+  input[type=text],select{padding:8px;border-radius:6px;border:1px solid #ccc;font-size:14px}
   #suggestions,#suggestionsCalloff{position:absolute;background:#fff;border:1px solid #ddd;border-radius:6px;max-height:220px;overflow:auto;z-index:999;width:320px}
   #suggestions div,#suggestionsCalloff div{padding:8px;cursor:pointer}
-  #suggestions div:hover,#suggestionsCalloff div:hover{background:#f0f8ff}
+  #suggestions div:hover,#suggestionsCalloff div:hover{background:#eef8ff}
   table.google-visualization-table-table{border-collapse:collapse !important;width:100% !important}
   .google-visualization-table-table td,.google-visualization-table-table th{border:1px solid #ddd !important;padding:6px !important}
-  .row-highlight{outline:3px solid rgba(0,120,215,0.15)}
-  tr.daLap{background:var(--accent2) !important}
-  tr.daTichHop{background:var(--accent) !important}
+  tr.row-installed { background: var(--yellow) !important }
+  tr.row-integrated { background: var(--green) !important }
   .small-btn{padding:6px 10px;border-radius:6px;background:#2f80ed;color:#fff;border:none;cursor:pointer}
-  @media(max-width:900px){ input[type=text],select{width:100%} #suggestions,#suggestionsCalloff{width:90vw} }
+  .ghost { background: #fff; color: var(--blue); border:1px solid #cfd8e3 }
+  @media(max-width:900px){ #suggestions,#suggestionsCalloff{width:90vw} input[type=text],select{width:100%} }
 </style>
 </head>
 <body>
 <header>TRA CỨU TRẠM 5G</header>
 
-<!-- LOGIN -->
-<div id="login-screen" class="card" style="max-width:420px;margin-top:30px;">
-  <h3 style="margin-top:0">Đăng nhập</h3>
-  <div class="row" style="flex-direction:column">
-    <input id="user" type="text" placeholder="Tên đăng nhập" />
-    <input id="pass" type="password" placeholder="Mật khẩu" />
-    <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;width:100%">
-      <button onclick="login()">Đăng nhập</button>
+<div class="container">
+  <div id="loginCard" class="card" style="max-width:480px;margin:20px auto">
+    <h3 style="margin:6px 0">Đăng nhập</h3>
+    <div style="display:flex;gap:8px;flex-direction:column">
+      <input id="loginUser" type="text" placeholder="Tên đăng nhập" />
+      <input id="loginPass" type="password" placeholder="Mật khẩu" />
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
+        <button onclick="doLogin()">Đăng nhập</button>
+      </div>
+      <p id="loginMsg" style="color:#c0392b"></p>
+      <small style="color:#666">Tài khoản mặc định: <strong>admin</strong> / <strong>123456</strong></small>
     </div>
-    <p id="login-msg" style="color:#d63636"></p>
-    <p style="font-size:12px;color:#666">Mặc định: <strong>admin</strong> / <strong>123456</strong></p>
   </div>
-</div>
 
-<!-- APP -->
-<div id="app" style="display:none;">
-  <div class="container card" style="max-width:1200px;">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <nav>
-        <button id="tabBtnChung" class="active" onclick="showTab('chung', this)">Tra cứu chung</button>
-        <button id="tabBtnCalloff" onclick="showTab('calloff', this)">Tra cứu Calloff</button>
-        <button id="tabBtnTong" onclick="showTab('tong', this)">Tổng hợp</button>
-      </nav>
-      <div>
-        <button class="ghost" onclick="logout()">Đăng xuất</button>
+  <div id="app" style="display:none">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <nav>
+          <button id="btnChung" class="active" onclick="showTab('chung', this)">Tra cứu chung</button>
+          <button id="btnCalloff" onclick="showTab('calloff', this)">Tra cứu Calloff</button>
+          <button id="btnTong" onclick="showTab('tong', this)">Tổng hợp</button>
+        </nav>
+        <div>
+          <button class="ghost" onclick="doLogout()">Đăng xuất</button>
+        </div>
       </div>
-    </div>
 
-    <!-- Tra cứu chung -->
-    <div id="tab-chung" class="tab" style="margin-top:12px">
-      <h3>Tra cứu chung</h3>
-      <div class="row" style="position:relative;flex-wrap:wrap">
-        <input id="searchChung" type="text" placeholder="Tìm mã trạm / cụm / huyện (gõ 206 hoặc 'Tam')" style="width:320px" />
-        <div id="suggestions"></div>
+      <!-- Tra cứu chung -->
+      <div id="tab-chung" style="margin-top:12px">
+        <h3>Tra cứu chung</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;position:relative">
+          <input id="inputChung" type="text" placeholder="Tìm mã trạm / cụm / huyện (ví dụ: 206 hoặc Tam)" style="width:320px" />
+          <div id="suggestions"></div>
 
-        <!-- dropdowns nhanh -->
-        <select id="drop_tram_chung" title="Chọn trạm (cột C)"><option value="">--Chọn trạm (C)--</option></select>
-        <select id="drop_huyen_chung" title="Chọn huyện (cột A)"><option value="">--Chọn huyện (A)--</option></select>
-        <select id="drop_cum_chung" title="Chọn cụm (cột B)"><option value="">--Chọn cụm (B)--</option></select>
-        <button class="small-btn" onclick="resetChung()">Reset</button>
+          <select id="drop_huyen_chung" title="Huyện (cột A)"><option value="">--Huyện (A)--</option></select>
+          <select id="drop_cum_chung" title="Cụm (cột B)"><option value="">--Cụm (B)--</option></select>
+          <select id="drop_tram_chung" title="Trạm (cột C)"><option value="">--Trạm (C)--</option></select>
+
+          <button class="small-btn" onclick="resetChung()">Reset</button>
+        </div>
+        <div id="table_chung" style="margin-top:12px"></div>
       </div>
-      <div id="table_chung" style="margin-top:12px"></div>
-    </div>
 
-    <!-- Calloff -->
-    <div id="tab-calloff" class="tab" style="display:none;margin-top:12px">
-      <h3>Tra cứu Calloff</h3>
-      <div class="row" style="flex-wrap:wrap;position:relative">
-        <select id="drop_tram_calloff"><option value="">--Chọn trạm (A)--</option></select>
-        <select id="drop_huyen_calloff"><option value="">--Chọn huyện (Q)--</option></select>
-        <input id="searchCalloff" type="text" placeholder="Tìm trạm trong Calloff..." style="width:320px" />
-        <div id="suggestionsCalloff"></div>
-        <button class="small-btn" onclick="resetCalloff()">Reset</button>
+      <!-- Calloff -->
+      <div id="tab-calloff" style="margin-top:12px;display:none">
+        <h3>Tra cứu Calloff</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;position:relative">
+          <select id="drop_tram_calloff"><option value="">--Chọn trạm (A)--</option></select>
+          <select id="drop_huyen_calloff"><option value="">--Chọn huyện (Q)--</option></select>
+          <input id="inputCalloff" type="text" placeholder="Tìm trạm trong Calloff..." style="width:320px" />
+          <div id="suggestionsCalloff"></div>
+          <button class="small-btn" onclick="resetCalloff()">Reset</button>
+        </div>
+        <div id="table_calloff" style="margin-top:12px"></div>
       </div>
-      <div id="table_calloff" style="margin-top:12px"></div>
-    </div>
 
-    <!-- Tổng hợp -->
-    <div id="tab-tong" class="tab" style="display:none;margin-top:12px">
-      <h3>Tổng hợp</h3>
-      <div class="row" style="flex-wrap:wrap">
-        <button class="small-btn" onclick="renderSummary('huyen')">Theo Huyện</button>
-        <button class="small-btn" onclick="renderSummary('cum')">Theo Cụm</button>
-        <select id="summary-filter" style="margin-left:8px">
-          <option value="">Tất cả</option>
-          <option value="lapdat">Chỉ trạm đã lắp</option>
-          <option value="tichhop">Chỉ trạm đã tích hợp</option>
-        </select>
+      <!-- Tổng hợp -->
+      <div id="tab-tong" style="margin-top:12px;display:none">
+        <h3>Tổng hợp</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="small-btn" onclick="renderSummary('huyen')">Theo Huyện</button>
+          <button class="small-btn" onclick="renderSummary('cum')">Theo Cụm</button>
+          <select id="summaryFilter" style="margin-left:8px">
+            <option value="">Tất cả</option>
+            <option value="lapdat">Chỉ trạm đã lắp</option>
+            <option value="tichhop">Chỉ trạm đã tích hợp</option>
+          </select>
+        </div>
+        <div id="summaryArea" style="margin-top:12px"></div>
+        <div id="summaryDetail" style="margin-top:12px"></div>
       </div>
-      <div id="summary-area" style="margin-top:12px"></div>
-      <div id="summary-detail" style="margin-top:12px"></div>
     </div>
   </div>
 </div>
 
 <script>
-/* ===============================
-   Config / URLs / Globals
-   =============================== */
+/* ========= CONFIG ========= */
 google.charts.load('current', {'packages':['table']});
 const SHEET_ID = '1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8';
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=sheet&headers=1`;
-const CALLOFF_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=calloff&headers=1`;
+const URL_SHEET = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=sheet&headers=1`;
+const URL_CALLOFF = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=calloff&headers=1`;
 
-let sheetDT = null;      // DataTable for sheet
-let calloffDT = null;    // DataTable for calloff
-let metaSheet = {};      // columns indices for sheet
-let metaCalloff = {};    // columns indices for calloff
+let sheetDT = null, calloffDT = null;
+let meta = {
+  sheet: { huyen:0, cum:1, tram:2, lap:5, tich:6, lat:-2, lng:-1 },
+  calloff: { tram:0, huyenQ:16, lap:5, tich:6, lat:-2, lng:-1 }
+};
 
-/* ===============================
-   Auth UI
-   =============================== */
-function login(){
-  const u = document.getElementById('user').value;
-  const p = document.getElementById('pass').value;
-  if(u==='admin' && p==='123456'){
-    localStorage.setItem('loggedIn','1');
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').style.display='block';
-    google.charts.setOnLoadCallback(initApp);
+/* ========= AUTH ========= */
+function doLogin(){
+  const u = document.getElementById('loginUser').value || document.getElementById('user')?.value || document.getElementById('userName')?.value;
+  const p = document.getElementById('loginPass').value || document.getElementById('pass')?.value || document.getElementById('password')?.value;
+  // default: admin / 123456
+  if((document.getElementById('loginUser') && document.getElementById('loginPass'))){
+    if(u === 'admin' && p === '123456'){
+      localStorage.setItem('loggedIn','1');
+      document.getElementById('loginCard')?.style?.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      google.charts.setOnLoadCallback(initAll);
+    } else {
+      document.getElementById('loginMsg').innerText = 'Sai user hoặc mật khẩu';
+    }
   } else {
-    document.getElementById('login-msg').innerText='Sai user hoặc mật khẩu';
+    // fallback
+    localStorage.setItem('loggedIn','1');
+    google.charts.setOnLoadCallback(initAll);
   }
 }
-function logout(){ localStorage.removeItem('loggedIn'); location.reload(); }
-if(localStorage.getItem('loggedIn')){
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='block';
-  google.charts.setOnLoadCallback(initApp);
+function doLogout(){
+  localStorage.removeItem('loggedIn'); location.reload();
+}
+if(localStorage.getItem('loggedIn')) {
+  document.getElementById('loginCard')?.style?.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  google.charts.setOnLoadCallback(initAll);
 }
 
-/* ===============================
-   Init App: load both sheets
-   =============================== */
-function initApp(){
-  loadSheet(SHEET_URL, 'sheet', onLoadSheet);
-  loadSheet(CALLOFF_URL, 'calloff', onLoadCalloff);
-  setupUIBindings();
+/* ========= INIT ========= */
+function initAll(){
+  loadSheet(URL_SHEET, 'sheet', onLoadSheet);
+  loadSheet(URL_CALLOFF, 'calloff', onLoadCalloff);
+  bindUI();
 }
 
-function loadSheet(url, kind, cb){
+function loadSheet(url, key, cb){
   const q = new google.visualization.Query(url);
   q.send(resp=>{
     if(resp.isError()){
-      alert('Lỗi tải dữ liệu: ' + resp.getMessage());
+      alert('Lỗi tải sheet: ' + resp.getMessage());
       return;
     }
-    cb(resp);
+    cb(resp.getDataTable());
   });
 }
 
-/* ===============================
-   After load: build meta and initial draws
-   =============================== */
-
-function onLoadSheet(resp){
-  sheetDT = resp.getDataTable();
-  // fixed positions per agreement:
-  // A=0 (huyen), B=1 (cum), C=2 (tram), F=5 (lap), G=6 (tichhop)
-  const ncol = sheetDT.getNumberOfColumns();
-  const latCol = Math.max(0, ncol-2);
-  const lngCol = Math.max(0, ncol-1);
-  metaSheet = {
-    tramCol: 2,
-    huyenCol: 0,
-    cumCol: 1,
-    lapCol: 5,
-    tichhopCol: 6,
-    latCol: latCol,
-    lngCol: lngCol
-  };
-  // populate dropdowns (chung)
-  populateDropdownFromColumn(sheetDT, metaSheet.tramCol, '#drop_tram_chung', true);
-  populateDropdownFromColumn(sheetDT, metaSheet.huyenCol, '#drop_huyen_chung', true);
-  populateDropdownFromColumn(sheetDT, metaSheet.cumCol, '#drop_cum_chung', true);
-
-  // initial view hide lat/lng
-  const view = hideLatLng(sheetDT, metaSheet.latCol, metaSheet.lngCol);
-  drawTable(view, 'table_chung', sheetDT, metaSheet);
+/* ========= AFTER LOAD SHEET ========= */
+function onLoadSheet(dt){
+  sheetDT = dt;
+  // determine lat/lng indexes (assumed last two columns)
+  const n = sheetDT.getNumberOfColumns();
+  meta.sheet.lat = n-2;
+  meta.sheet.lng = n-1;
+  // populate dropdowns for chung: huyen (A=0), cum (B=1), tram (C=2)
+  populateDropdown(sheetDT, meta.sheet.huyen, '#drop_huyen_chung', true);
+  populateDropdown(sheetDT, meta.sheet.cum, '#drop_cum_chung', true);
+  populateDropdown(sheetDT, meta.sheet.tram, '#drop_tram_chung', true);
+  // initial draw full table (copy source into DataTable f with map column and hide lat/lng)
+  const f = copyTableWithMap(sheetDT, meta.sheet.lat, meta.sheet.lng, meta.sheet.tram);
+  const view = hideLatLngView(f);
+  drawTable(view, 'table_chung', f, meta.sheet);
 }
 
-function onLoadCalloff(resp){
-  calloffDT = resp.getDataTable();
-  const ncol = calloffDT.getNumberOfColumns();
-  // cột mã trạm A=0, huyện Q = index 16 (Q) per your info
-  const tramCol = 0;
-  const huyenQ = 16; // user says Q
-  const latCol = Math.max(0, ncol-2);
-  const lngCol = Math.max(0, ncol-1);
-  metaCalloff = {
-    tramCol: tramCol,
-    huyenColQ: huyenQ,
-    latCol: latCol,
-    lngCol: lngCol,
-    lapCol: 5,
-    tichhopCol: 6
-  };
-  // populate calloff dropdowns: trạm from col A, huyện from col Q
-  populateDropdownFromColumn(calloffDT, metaCalloff.tramCol, '#drop_tram_calloff', true);
-  // For col Q may have empty or not, build list defensively
-  populateDropdownFromColumn(calloffDT, metaCalloff.huyenColQ, '#drop_huyen_calloff', true);
-
-  const view = hideLatLng(calloffDT, metaCalloff.latCol, metaCalloff.lngCol);
-  drawTable(view, 'table_calloff', calloffDT, metaCalloff);
+function onLoadCalloff(dt){
+  calloffDT = dt;
+  const n = calloffDT.getNumberOfColumns();
+  meta.calloff.lat = n-2;
+  meta.calloff.lng = n-1;
+  // populate Calloff dropdowns: trạm col A (0), huyện col Q (16) if exists
+  populateDropdown(calloffDT, meta.calloff.tram, '#drop_tram_calloff', true);
+  if(meta.calloff.huyenQ < calloffDT.getNumberOfColumns()){
+    populateDropdown(calloffDT, meta.calloff.huyenQ, '#drop_huyen_calloff', true);
+  } else {
+    // leave empty
+    document.querySelector('#drop_huyen_calloff').innerHTML = '<option value="">--Chọn huyện (Q)--</option>';
+  }
+  const f = copyTableWithMap(calloffDT, meta.calloff.lat, meta.calloff.lng, meta.calloff.tram);
+  const view = hideLatLngView(f);
+  drawTable(view, 'table_calloff', f, meta.calloff);
 }
 
-/* ===============================
-   UI Bindings (search, dropdowns)
-   =============================== */
-function setupUIBindings(){
-  // CHUNG: autocomplete input
-  $('#searchChung').on('input', function(){
-    const v = $(this).val().trim();
-    $('#suggestions').empty();
-    if(!v || !sheetDT) return;
-    const suggestions = buildSuggestionsFromDT(sheetDT, [metaSheet.tramCol, metaSheet.cumCol, metaSheet.huyenCol], v);
-    suggestions.slice(0,20).forEach(s=>{
-      $('<div>').text(s).appendTo('#suggestions').on('click', function(){
-        $('#searchChung').val('');
-        $('#suggestions').empty();
-        filterByKeywordAndDraw(sheetDT, s, 'table_chung', metaSheet);
-      });
-    });
-  });
-  // CHUNG dropdowns
-  $('#drop_tram_chung').on('change', function(){ const v=this.value; if(!v) resetChung(); else filterByKeywordAndDraw(sheetDT, v, 'table_chung', metaSheet); });
-  $('#drop_huyen_chung').on('change', function(){ const v=this.value; if(!v) resetChung(); else filterByKeywordAndDraw(sheetDT, v, 'table_chung', metaSheet); });
-  $('#drop_cum_chung').on('change', function(){ const v=this.value; if(!v) resetChung(); else filterByKeywordAndDraw(sheetDT, v, 'table_chung', metaSheet); });
+/* ========= HELPERS ========= */
 
-  // CALLOFF autocomplete & dropdowns
-  $('#searchCalloff').on('input', function(){
-    const v = $(this).val().trim();
-    $('#suggestionsCalloff').empty();
-    if(!v || !calloffDT) return;
-    const suggestions = buildSuggestionsFromDT(calloffDT, [metaCalloff.tramCol, metaCalloff.huyenColQ], v);
-    suggestions.slice(0,20).forEach(s=>{
-      $('<div>').text(s).appendTo('#suggestionsCalloff').on('click', function(){
-        $('#searchCalloff').val('');
-        $('#suggestionsCalloff').empty();
-        filterByKeywordAndDraw(calloffDT, s, 'table_calloff', metaCalloff);
-      });
-    });
-  });
-  $('#drop_tram_calloff').on('change', function(){ const v=this.value; if(!v) resetCalloff(); else filterByKeywordAndDraw(calloffDT, v, 'table_calloff', metaCalloff); });
-  $('#drop_huyen_calloff').on('change', function(){ const v=this.value; if(!v) resetCalloff(); else filterByKeywordAndDraw(calloffDT, v, 'table_calloff', metaCalloff); });
-
-  // Summary filter change
-  $('#summary-filter').on('change', function(){
-    // re-render current summary if exists
-    const curMode = $('#summary-area').data('mode') || null;
-    if(curMode) renderSummary(curMode);
-  });
+// Copy a DataTable (dtSrc) into a new DataTable and add a 'Bản đồ' column (string) as last column
+// Set Bản đồ to anchor link if lat & lng exist. Returns new DataTable.
+function copyTableWithMap(dtSrc, latColIndex, lngColIndex, tramColIndex){
+  const f = new google.visualization.DataTable();
+  const cols = dtSrc.getNumberOfColumns();
+  for(let c=0;c<cols;c++){
+    f.addColumn(dtSrc.getColumnType(c), dtSrc.getColumnLabel(c));
+  }
+  // add map column
+  f.addColumn('string', 'Bản đồ');
+  for(let r=0;r<dtSrc.getNumberOfRows();r++){
+    const row = [];
+    for(let c=0;c<cols;c++){
+      row.push(dtSrc.getValue(r,c));
+    }
+    // build map cell
+    const lat = (latColIndex >=0 && latColIndex < cols) ? dtSrc.getValue(r, latColIndex) : null;
+    const lng = (lngColIndex >=0 && lngColIndex < cols) ? dtSrc.getValue(r, lngColIndex) : null;
+    const tram = (tramColIndex >=0 && tramColIndex < cols) ? dtSrc.getValue(r, tramColIndex) : '';
+    let mapCell = '';
+    if(lat !== null && lng !== null && lat !== '' && lng !== ''){
+      // create Google Maps link with label via q=lat,lng(label)
+      const label = encodeURIComponent(tram || '');
+      mapCell = `<a href="https://www.google.com/maps?q=${lat},${lng} (${label})" target="_blank">Xem bản đồ</a>`;
+    }
+    row.push(mapCell);
+    f.addRow(row);
+  }
+  return f;
 }
 
-/* ===============================
-   Helpers: populate dropdowns, suggestions
-   =============================== */
-function populateDropdownFromColumn(dt, colIndex, selector, includeBlank){
+// Hide last two numeric columns (lat/lng) in a DataTable by returning a DataView excluding the two last columns if numeric
+function hideLatLngView(dt){
+  const view = new google.visualization.DataView(dt);
+  const cols = [];
+  for(let c=0;c<dt.getNumberOfColumns();c++){
+    // we'll exclude last two columns if they look numeric OR if their labels match typical coords
+    // But simpler: exclude the two columns before the last column 'Bản đồ' (we know we appended Bản đồ as last)
+    // so lat/lng are dt.getNumberOfColumns()-3 and -2 before map col? We appended map, so original lat/lng positions are shifted.
+    // Simpler method: exclude any column that has numeric-only header? Not safe.
+    // Our copyTableWithMap kept original columns first, then added 'Bản đồ' last. So lat = original last-2, lng original last-1.
+    // That means lat index = dt.getNumberOfColumns() - 3, lng = dt.getNumberOfColumns() - 2 (since last is Bản đồ).
+    cols.push(c);
+  }
+  // remove the two before last
+  if(dt.getNumberOfColumns() >= 3){
+    const remove1 = dt.getNumberOfColumns() - 3;
+    const remove2 = dt.getNumberOfColumns() - 2;
+    const filtered = cols.filter(c => c !== remove1 && c !== remove2);
+    view.setColumns(filtered);
+  } else {
+    view.setColumns(cols);
+  }
+  return view;
+}
+
+// Populate dropdown of unique values from a column
+function populateDropdown(dt, colIndex, selector, includeBlank){
   const set = new Set();
-  if(colIndex < 0) return;
+  if(colIndex < 0 || !dt) return;
   for(let r=0;r<dt.getNumberOfRows();r++){
     const v = dt.getValue(r, colIndex);
-    if(v !== null && v !== undefined && v.toString().trim() !== '') set.add(v.toString());
+    if(v !== null && v !== undefined && String(v).trim() !== '') set.add(String(v));
   }
   const arr = Array.from(set).sort();
-  const el = document.querySelector(selector);
-  if(!el) return;
-  if(includeBlank){
-    el.innerHTML = '<option value="">--Chọn--</option>';
-  } else {
-    el.innerHTML = '';
-  }
+  const sel = document.querySelector(selector);
+  if(!sel) return;
+  sel.innerHTML = includeBlank ? '<option value="">--Chọn--</option>' : '';
   arr.forEach(v=>{
-    const opt = document.createElement('option'); opt.value = v; opt.textContent = v; el.appendChild(opt);
+    const opt = document.createElement('option'); opt.value = v; opt.textContent = v; sel.appendChild(opt);
   });
 }
 
-function buildSuggestionsFromDT(dt, cols, query){
-  const q = query.toLowerCase();
+// Build suggestions from specified columns
+function buildSuggestionsFrom(dt, cols, keyword){
+  const k = keyword.toLowerCase();
   const s = new Set();
   for(let r=0;r<dt.getNumberOfRows();r++){
     for(const c of cols){
       if(c < 0 || c >= dt.getNumberOfColumns()) continue;
       const v = dt.getValue(r,c);
-      if(v && v.toString().toLowerCase().includes(q)) s.add(v.toString());
+      if(v && String(v).toLowerCase().includes(k)) s.add(String(v));
     }
   }
   return Array.from(s);
 }
 
-/* ===============================
-   Filter & draw
-   =============================== */
-function filterByKeywordAndDraw(dtSource, keyword, containerId, meta){
-  if(!dtSource) return;
-  const rows = [];
-  const N = dtSource.getNumberOfRows();
-  const M = dtSource.getNumberOfColumns();
-  for(let r=0;r<N;r++){
-    let ok = false;
-    for(let c=0;c<M;c++){
-      const v = dtSource.getValue(r,c);
-      if(v && v.toString().toLowerCase().includes(keyword.toLowerCase())){ ok = true; break; }
-    }
-    if(ok) rows.push(r);
-  }
-  const view = new google.visualization.DataView(dtSource);
-  view.setRows(rows);
-  // hide lat/lng in view
-  const viewHidden = hideLatLngFromView(view, meta ? meta.latCol : dtSource.getNumberOfColumns()-2, meta ? meta.lngCol : dtSource.getNumberOfColumns()-1);
-  drawTable(viewHidden, containerId, dtSource, meta);
+/* ========= EVENTS & UI BINDING ========= */
+function bindUI(){
+  // CHUNG suggestions
+  $('#inputChung').on('input', function(){
+    $('#suggestions').empty();
+    const val = $(this).val().trim();
+    if(!val || !sheetDT) return;
+    const suggestions = buildSuggestionsFrom(sheetDT, [meta.sheet.tram, meta.sheet.cum, meta.sheet.huyen], val);
+    suggestions.slice(0,20).forEach(s=>{
+      $('<div>').text(s).appendTo('#suggestions').click(function(){
+        $('#inputChung').val('');
+        $('#suggestions').empty();
+        filterByKeyword(sheetDT, s, 'table_chung', meta.sheet);
+      });
+    });
+  });
+
+  // CHUNG dropdowns
+  $('#drop_huyen_chung').on('change', function(){ const v=this.value; if(!v) resetChung(); else filterByKeyword(sheetDT, v, 'table_chung', meta.sheet); });
+  $('#drop_cum_chung').on('change', function(){ const v=this.value; if(!v) resetChung(); else filterByKeyword(sheetDT, v, 'table_chung', meta.sheet); });
+  $('#drop_tram_chung').on('change', function(){ const v=this.value; if(!v) resetChung(); else filterByKeyword(sheetDT, v, 'table_chung', meta.sheet); });
+
+  // CALLOFF suggestions
+  $('#inputCalloff').on('input', function(){
+    $('#suggestionsCalloff').empty();
+    const v = $(this).val().trim();
+    if(!v || !calloffDT) return;
+    const suggestions = buildSuggestionsFrom(calloffDT, [meta.calloff.tram, meta.calloff.huyenQ], v);
+    suggestions.slice(0,20).forEach(s=>{
+      $('<div>').text(s).appendTo('#suggestionsCalloff').click(function(){
+        $('#inputCalloff').val('');
+        $('#suggestionsCalloff').empty();
+        filterByKeyword(calloffDT, s, 'table_calloff', meta.calloff);
+      });
+    });
+  });
+
+  // CALLOFF dropdowns
+  $('#drop_tram_calloff').on('change', function(){ const v=this.value; if(!v) resetCalloff(); else filterByKeyword(calloffDT, v, 'table_calloff', meta.calloff); });
+  $('#drop_huyen_calloff').on('change', function(){ const v=this.value; if(!v) resetCalloff(); else filterByKeyword(calloffDT, v, 'table_calloff', meta.calloff); });
+
+  // Summary filter
+  $('#summaryFilter').on('change', function(){
+    // re-render last summary if present
+    const curMode = $('#summaryArea').data('mode');
+    if(curMode) renderSummary(curMode);
+  });
 }
 
+/* ========= Filtering helpers ========= */
+// Filter source DataTable by keyword found anywhere, produce new DataTable f (copy) and draw
+function filterByKeyword(dtSource, keyword, containerId, metaObj){
+  if(!dtSource) return;
+  const rows = [];
+  for(let r=0;r<dtSource.getNumberOfRows();r++){
+    for(let c=0;c<dtSource.getNumberOfColumns();c++){
+      const v = dtSource.getValue(r,c);
+      if(v && String(v).toLowerCase().includes(String(keyword).toLowerCase())){
+        rows.push(r); break;
+      }
+    }
+  }
+  const f = buildFilteredTable(dtSource, rows, metaObj);
+  const view = hideLatLngView(f);
+  drawTable(view, containerId, f, metaObj);
+}
+
+// Build a DataTable f containing only selected source rows (and a final 'Bản đồ' column)
+function buildFilteredTable(dtSource, selectedRows, metaObj){
+  const f = new google.visualization.DataTable();
+  const cols = dtSource.getNumberOfColumns();
+  for(let c=0;c<cols;c++){
+    f.addColumn(dtSource.getColumnType(c), dtSource.getColumnLabel(c));
+  }
+  f.addColumn('string','Bản đồ');
+  for(const r of selectedRows){
+    const row = [];
+    for(let c=0;c<cols;c++) row.push(dtSource.getValue(r,c));
+    // map cell
+    const lat = (metaObj && metaObj.lat >=0) ? dtSource.getValue(r, metaObj.lat) : dtSource.getValue(r, cols-2);
+    const lng = (metaObj && metaObj.lng >=0) ? dtSource.getValue(r, metaObj.lng) : dtSource.getValue(r, cols-1);
+    const tram = (metaObj && metaObj.tram >=0) ? dtSource.getValue(r, metaObj.tram) : dtSource.getValue(r, 0);
+    let mapCell = '';
+    if(lat !== null && lng !== null && lat !== '' && lng !== '') mapCell = `<a href="https://www.google.com/maps?q=${lat},${lng} (${encodeURIComponent(tram||'')})" target="_blank">Xem bản đồ</a>`;
+    row.push(mapCell);
+    f.addRow(row);
+  }
+  return f;
+}
+
+// Reset functions
 function resetChung(){
   if(!sheetDT) return;
-  const view = hideLatLng(sheetDT, metaSheet.latCol, metaSheet.lngCol);
-  drawTable(view, 'table_chung', sheetDT, metaSheet);
-  $('#drop_tram_chung').val('');
-  $('#drop_huyen_chung').val('');
-  $('#drop_cum_chung').val('');
-  $('#searchChung').val('');
-  $('#suggestions').empty();
+  const f = copyTableWithMap(sheetDT, meta.sheet.lat, meta.sheet.lng, meta.sheet.tram);
+  const view = hideLatLngView(f);
+  drawTable(view, 'table_chung', f, meta.sheet);
+  $('#drop_huyen_chung,#drop_cum_chung,#drop_tram_chung').val('');
+  $('#inputChung').val(''); $('#suggestions').empty();
 }
 function resetCalloff(){
   if(!calloffDT) return;
-  const view = hideLatLng(calloffDT, metaCalloff.latCol, metaCalloff.lngCol);
-  drawTable(view, 'table_calloff', calloffDT, metaCalloff);
-  $('#drop_tram_calloff').val('');
-  $('#drop_huyen_calloff').val('');
-  $('#searchCalloff').val('');
-  $('#suggestionsCalloff').empty();
+  const f = copyTableWithMap(calloffDT, meta.calloff.lat, meta.calloff.lng, meta.calloff.tram);
+  const view = hideLatLngView(f);
+  drawTable(view, 'table_calloff', f, meta.calloff);
+  $('#drop_tram_calloff,#drop_huyen_calloff').val('');
+  $('#inputCalloff').val(''); $('#suggestionsCalloff').empty();
 }
 
-/* ===============================
-   Hide lat/lng: build DataView excluding lat/lng columns
-   =============================== */
-function hideLatLng(dt, latCol, lngCol){
-  const view = new google.visualization.DataView(dt);
-  const cols = [];
-  for(let c=0;c<dt.getNumberOfColumns();c++){
-    if(c === latCol || c === lngCol) continue;
-    cols.push(c);
-  }
-  view.setColumns(cols);
-  return view;
-}
-// if view is already a DataView, build another DataView excluding columns using source column indices
-function hideLatLngFromView(viewObj, latCol, lngCol){
-  // viewObj may be DataView built on source. But easiest: get source table from viewObj.getTable? Not guaranteed.
-  // Simpler: if viewObj has getNumberOfColumns etc, we need to build a DataTable from view then remove last two numeric columns if look like lat/lng.
-  // We'll attempt to construct new DataView that excludes columns whose labels look like lat/lng (best effort)
-  try{
-    // try to derive source columns from viewObj
-    const cols = [];
-    for(let c=0;c<viewObj.getNumberOfColumns();c++){
-      cols.push(c);
-    }
-    // attempt to detect numeric last two columns by sampling first row
-    const ncol = viewObj.getNumberOfColumns();
-    if(ncol >= 2){
-      const last = viewObj.getValue(0, ncol-1);
-      const second = viewObj.getValue(0, ncol-2);
-      const isNumLast = last !== null && !isNaN(parseFloat(last));
-      const isNumSecond = second !== null && !isNaN(parseFloat(second));
-      if(isNumLast && isNumSecond){
-        cols.pop(); cols.pop();
-      }
-    }
-    const v2 = new google.visualization.DataView(viewObj);
-    v2.setColumns(cols);
-    return v2;
-  } catch(e){
-    // fallback: return original view
-    return viewObj;
-  }
-}
-
-/* ===============================
-   Draw table and post-process (color rows, add map link, hide lat/lng)
-   dtView = DataView or DataTable to pass to draw
-   dtSource = original DataTable (used for lat/lng, tram name if needed)
-   meta = mapping object {tramCol,huyenCol,cumCol,lapCol,tichhopCol,latCol,lngCol}
-   =============================== */
-function drawTable(dtView, containerId, dtSource, meta){
+/* ========= drawTable: render and post-process coloring & map link ========= */
+// dtView: DataView built from f (copy table with map column). f: DataTable used to read values for coloring.
+function drawTable(dtView, containerId, f, metaObj){
   const table = new google.visualization.Table(document.getElementById(containerId));
   google.visualization.events.addListener(table,'ready', function(){
-    // post-process rows
     const tbl = document.querySelector('#'+containerId+' table');
     if(!tbl) return;
     const tbody = tbl.querySelector('tbody');
     if(!tbody) return;
     const rows = tbody.querySelectorAll('tr');
-    // Since dtView has columns same as source except lat/lng removed (we built that way),
-    // indices for F and G remain 5 and 6 (0-based) as long as lat/lng are last two.
-    rows.forEach((tr, idx) => {
-      const cells = tr.querySelectorAll('td');
-      // defensive: ensure at least 7 columns exist to check F(5) and G(6)
-      if(cells.length >= 7){
-        const valF = cells[5].innerText.trim();
-        const valG = cells[6].innerText.trim();
-        const isLap = (valF === '1' || valF === 1);
-        const isTich = (valG === '1' || valG === 1);
-        if(isLap && isTich){
-          tr.classList.add('daTichHop');
-        } else if(isLap && !isTich){
-          tr.classList.add('daLap');
-        } else {
-          // no color
-        }
+    // f.getNumberOfColumns gives number of cols incl map col. lat/lng were removed in view.
+    for(let i=0;i<rows.length;i++){
+      const tr = rows[i];
+      // colorization: read from f (which includes original columns)
+      try{
+        const valF = f.getValue(i, metaObj && metaObj.lap !== undefined ? metaObj.lap : 5);
+        const valG = f.getValue(i, metaObj && metaObj.tich !== undefined ? metaObj.tich : 6);
+        const isLap = (valF === 1 || valF === '1');
+        const isTich = (valG === 1 || valG === '1');
+        tr.classList.remove('row-installed','row-integrated','daLap','daTichHop');
+        if(isLap && isTich) tr.classList.add('row-integrated');
+        else if(isLap && !isTich) tr.classList.add('row-installed');
+      } catch(e){
+        // ignore
       }
-      // create map link in last visible cell
-      if(cells.length >= 3){
-        // attempt to find lat/lng from dtSource using mapping: need original row index
-        // The index idx corresponds to view row; get underlying source row via dtView.getTableRowIndex? Not available
-        // But if dtView is a DataView built from dtSource with setRows(rows) or hideLatLng, its row indices align: use dtView.getValue
-      }
-    });
-
-    // hide last two columns if they accidentally visible (extra safety)
-    // We'll hide columns whose text looks numeric coordinates
-    rows.forEach(tr=>{
+      // last visible cell should be Bản đồ (we ensured to add it)
+      // Hide any numeric-looking trailing cells for safety (defensive)
       const cells = tr.querySelectorAll('td');
       if(cells.length>=2){
         const last = cells[cells.length-1];
@@ -444,92 +432,94 @@ function drawTable(dtView, containerId, dtSource, meta){
         if(last && /^-?\d+(\.\d+)?$/.test(last.innerText.trim())) last.style.display='none';
         if(secondLast && /^-?\d+(\.\d+)?$/.test(secondLast.innerText.trim())) secondLast.style.display='none';
       }
-    });
+    }
   });
-
   table.draw(dtView, {showRowNumber:true, allowHtml:true, width:'100%', page:'enable', pageSize:20});
 }
 
-/* ===============================
-   Summary (group by huyen or cum)
-   =============================== */
-function renderSummary(mode){
+/* ========= Summary / Detail ========= */
+function renderSummary(mode){ // 'huyen' or 'cum'
   if(!sheetDT) return;
-  const dt = sheetDT;
-  const groupCol = (mode==='huyen') ? metaSheet.huyenCol : metaSheet.cumCol;
-  const sum = new Map();
-  for(let r=0;r<dt.getNumberOfRows();r++){
-    const key = (dt.getValue(r, groupCol) || '(Không xác định)').toString();
-    if(!sum.has(key)) sum.set(key, {total:0, lap:0, tich:0, rows:[]});
-    const obj = sum.get(key);
+  const groupCol = (mode==='huyen') ? meta.sheet.huyen : meta.sheet.cum;
+  const sumMap = new Map();
+  for(let r=0;r<sheetDT.getNumberOfRows();r++){
+    const key = String(sheetDT.getValue(r, groupCol) || '(Không xác định)');
+    if(!sumMap.has(key)) sumMap.set(key, {total:0, lap:0, tich:0, rows:[]});
+    const obj = sumMap.get(key);
     obj.total++;
-    const lap = dt.getValue(r, metaSheet.lapCol);
-    const tich = dt.getValue(r, metaSheet.tichhopCol);
+    const lap = sheetDT.getValue(r, meta.sheet.lap);
+    const tich = sheetDT.getValue(r, meta.sheet.tich);
     if(lap==1 || lap==='1') obj.lap++;
     if(tich==1 || tich==='1') obj.tich++;
     obj.rows.push(r);
   }
-
-  // generate HTML table
-  let html = `<table border="1" cellpadding="6" style="width:100%;border-collapse:collapse"><thead style="background:#f0f4ff"><tr><th>STT</th><th>${mode==='huyen'?'Huyện':'Cụm'}</th><th>Tổng</th><th>Đã lắp</th><th>Đã tích hợp</th><th>% lắp</th><th>% tích hợp</th><th></th></tr></thead><tbody>`;
-  let i = 0;
-  Array.from(sum.entries()).sort((a,b)=>b[1].total - a[1].total).forEach(([key,val])=>{
+  // build html
+  let html = `<table border="1" cellpadding="6" style="width:100%;border-collapse:collapse"><thead style="background:#f0f4ff"><tr><th>STT</th><th>${mode==='huyen'?'Huyện':'Cụm'}</th><th>Tổng</th><th>Đã lắp</th><th>Đã tích hợp</th><th>% Lắp</th><th>% Tích hợp</th><th>Chi tiết</th></tr></thead><tbody>`;
+  let i=0;
+  Array.from(sumMap.entries()).sort((a,b)=>b[1].total - a[1].total).forEach(([k,v])=>{
     i++;
-    const pctLap = val.total ? Math.round(val.lap*100/val.total) : 0;
-    const pctTich = val.total ? Math.round(val.tich*100/val.total) : 0;
+    const pctLap = v.total ? Math.round(v.lap*100/v.total) : 0;
+    const pctTich = v.total ? Math.round(v.tich*100/v.total) : 0;
     html += `<tr>
       <td style="text-align:center">${i}</td>
-      <td>${escapeHtml(key)}</td>
-      <td style="text-align:center">${val.total}</td>
-      <td style="text-align:center">${val.lap}</td>
-      <td style="text-align:center">${val.tich}</td>
+      <td>${escapeHtml(k)}</td>
+      <td style="text-align:center">${v.total}</td>
+      <td style="text-align:center">${v.lap}</td>
+      <td style="text-align:center">${v.tich}</td>
       <td style="text-align:center">${pctLap}%</td>
       <td style="text-align:center">${pctTich}%</td>
-      <td style="text-align:center"><button class="small-btn" onclick="showDetail('${escapeQuotes(key)}','${mode}')">Xem chi tiết</button></td>
+      <td style="text-align:center"><button class="small-btn" onclick="showGroupDetail('${escapeJs(k)}','${mode}')">Xem</button></td>
     </tr>`;
   });
   html += `</tbody></table>`;
-  document.getElementById('summary-area').innerHTML = html;
-  document.getElementById('summary-area').dataset.mode = mode;
-  document.getElementById('summary-detail').innerHTML = '';
+  $('#summaryArea').html(html);
+  $('#summaryArea').data('mode', mode);
+  $('#summaryDetail').html('');
 }
 
-/* ===============================
-   Show detail (list trạm of a group)
-   =============================== */
-function showDetail(key, mode){
+function showGroupDetail(key, mode){
   if(!sheetDT) return;
-  const dt = sheetDT;
-  const groupCol = (mode==='huyen') ? metaSheet.huyenCol : metaSheet.cumCol;
-  // gather rows
-  const rows = [];
-  for(let r=0;r<dt.getNumberOfRows();r++){
-    const v = (dt.getValue(r, groupCol) || '').toString();
-    if(v === key) rows.push(r);
+  const groupCol = (mode==='huyen') ? meta.sheet.huyen : meta.sheet.cum;
+  const matched = [];
+  for(let r=0;r<sheetDT.getNumberOfRows();r++){
+    const v = String(sheetDT.getValue(r, groupCol) || '');
+    if(v === key) matched.push(r);
   }
-  if(rows.length===0){
-    document.getElementById('summary-detail').innerHTML = '<p>Không có dữ liệu chi tiết</p>';
-    return;
+  if(matched.length === 0){
+    $('#summaryDetail').html('<p>Không có dữ liệu chi tiết</p>'); return;
   }
-  // build DataTable of these rows
   const f = new google.visualization.DataTable();
-  for(let c=0;c<dt.getNumberOfColumns();c++) f.addColumn(dt.getColumnType(c), dt.getColumnLabel(c));
-  rows.forEach(r=>{
+  for(let c=0;c<sheetDT.getNumberOfColumns();c++) f.addColumn(sheetDT.getColumnType(c), sheetDT.getColumnLabel(c));
+  f.addColumn('string','Bản đồ');
+  matched.forEach(r=>{
     const row = [];
-    for(let c=0;c<dt.getNumberOfColumns();c++) row.push(dt.getValue(r,c));
+    for(let c=0;c<sheetDT.getNumberOfColumns();c++) row.push(sheetDT.getValue(r,c));
+    const lat = sheetDT.getValue(r, meta.sheet.lat);
+    const lng = sheetDT.getValue(r, meta.sheet.lng);
+    const tram = sheetDT.getValue(r, meta.sheet.tram);
+    let mapCell = '';
+    if(lat && lng) mapCell = `<a href="https://www.google.com/maps?q=${lat},${lng} (${encodeURIComponent(tram||'')})" target="_blank">Xem bản đồ</a>`;
+    row.push(mapCell);
     f.addRow(row);
   });
-  const view = hideLatLng(f, f.getNumberOfColumns()-2, f.getNumberOfColumns()-1);
-  document.getElementById('summary-detail').innerHTML = `<h4>Chi tiết ${mode}: ${escapeHtml(key)}</h4><div id="detail_table"></div>`;
-  drawTable(view, 'detail_table', f, metaSheet);
+  const view = hideLatLngView(f);
+  $('#summaryDetail').html(`<h4>Chi tiết ${mode==='huyen'?'Huyện':'Cụm'}: ${escapeHtml(key)}</h4><div id="detail_table"></div>`);
+  drawTable(view, 'detail_table', f, meta.sheet);
 }
 
-/* ===============================
-   Utils
-   =============================== */
-function escapeHtml(s){ return (s+'').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-function escapeQuotes(s){ return (s+'').replace(/'/g,"\\'").replace(/"/g,"&quot;"); }
+/* ========= Utility ========= */
+function showTab(id, btn){
+  $('nav button').removeClass('active');
+  $(btn).addClass('active');
+  $('#tab-chung').hide(); $('#tab-calloff').hide(); $('#tab-tong').hide();
+  if(id==='chung') $('#tab-chung').show();
+  if(id==='calloff') $('#tab-calloff').show();
+  if(id==='tong') $('#tab-tong').show();
+}
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeJs(s){ return String(s).replace(/'/g,"\\'").replace(/"/g,'\\"'); }
 
+/* ========= END ========= */
 </script>
 </body>
 </html>
