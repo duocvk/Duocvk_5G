@@ -450,6 +450,63 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
+<!-- Tag 4: Chi tiết lỗi -->
+<div id="tag4">
+  <input type="text" id="siteInput" placeholder="Nhập site..." autocomplete="off">
+  <div id="suggestions" style="border:1px solid #ccc; max-height:150px; overflow-y:auto;"></div>
+  <div id="siteErrors" style="margin-top:10px;"></div>
+</div>
 
+<script>
+  // Giả sử errorData đã có dạng array JSON
+  // errorData = [ ["QNM0005","Núi Thành","Lan 6 (43)",1,"",1,...], ... ];
+
+  const siteInput = document.getElementById('siteInput');
+  const suggestionsDiv = document.getElementById('suggestions');
+  const siteErrorsDiv = document.getElementById('siteErrors');
+
+  // Hàm lọc gợi ý
+  siteInput.addEventListener('input', function() {
+    const val = this.value.trim().toUpperCase();
+    suggestionsDiv.innerHTML = '';
+    if (!val) return;
+
+    const matches = errorData
+      .map(row => row[0])
+      .filter(site => site.includes(val));
+
+    matches.forEach(site => {
+      const div = document.createElement('div');
+      div.textContent = site;
+      div.style.cursor = 'pointer';
+      div.style.padding = '2px 5px';
+      div.addEventListener('click', () => {
+        displaySiteErrors(site);
+        siteInput.value = ''; // xóa input sau khi chọn
+        suggestionsDiv.innerHTML = '';
+      });
+      suggestionsDiv.appendChild(div);
+    });
+  });
+
+  function displaySiteErrors(site) {
+    // tìm row tương ứng
+    const row = errorData.find(r => r[0] === site);
+    if (!row) {
+      siteErrorsDiv.innerHTML = `<p>Không tìm thấy trạm ${site}</p>`;
+      return;
+    }
+
+    let html = `<p>Các lỗi của trạm ${site} là:</p><ul>`;
+    for (let i = 3; i <= 16; i++) { // cột D=3 đến Q=16
+      if (row[i] == 1) {
+        const errorTitle = errorData[0][i] || `Lỗi cột ${i+1}`;
+        html += `<li>${errorTitle}</li>`;
+      }
+    }
+    html += '</ul>';
+    siteErrorsDiv.innerHTML = html;
+  }
+</script>
 </body>
 </html>
