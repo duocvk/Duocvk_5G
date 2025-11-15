@@ -596,167 +596,143 @@ function showErrors(tram){
 </script>
   
 
-<!-- Thêm vào HTML: Panel Lỗi chi tiết -->
-<div id="panel-chi-tiet" style="margin-top:12px;display:none">
+<!-- Chèn trực tiếp vào div.tabs cùng các tab khác -->
+<button class="tab-btn" data-tab="loiChiTiet">Lỗi chi tiết</button>
+
+<!-- Panel Lỗi chi tiết -->
+<div id="panel-loiChiTiet" style="margin-top:12px;display:none">
   <div class="controls">
     <div style="position:relative">
-      <input id="inputChiTiet" type="text" placeholder="Chọn lỗi...">
-      <div id="suggestionsChiTiet" style="display:none"></div>
+      <input id="inputLoiChiTiet" type="text" placeholder="Tìm lỗi...">
+      <div id="suggestionsLoiChiTiet" style="display:none"></div>
     </div>
-    <button id="resetChiTiet" class="btn ghost">Reset</button>
+    <button id="resetLoiChiTiet" class="btn ghost">Reset</button>
   </div>
-  <div id="summaryChiTiet" style="margin-top:12px"></div>
-  <div id="tableChiTiet" style="margin-top:12px"></div>
+  <div id="summaryLoiChiTiet" style="margin-top:12px"></div>
+  <div id="tableLoiChiTiet" style="margin-top:12px"></div>
 </div>
 
 <script>
-/* ================= Tab Lỗi chi tiết ================= */
-let errorData = []; // dữ liệu sheet error
-
-// Fetch sheet error khi load
-const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
-async function fetchErrorSheet(){
-  try{
-    const res = await fetch(URL_ERROR);
-    const text = await res.text();
-    const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
-    const raw = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
-    errorData = raw;
-  } catch(e){
-    console.error('Lỗi tải sheet error', e);
-  }
-}
-fetchErrorSheet();
-
-// Thêm tab “Lỗi chi tiết” vào hàng tab
-const tabContainer = document.querySelector('.tabs');
-if(tabContainer){
-  const btn = document.createElement('button');
-  btn.className = 'tab-btn';
-  btn.setAttribute('data-tab','chi-tiet');
-  btn.textContent = 'Lỗi chi tiết';
-  tabContainer.appendChild(btn);
-}
-
-// Click tab để hiện panel và ẩn các panel khác
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const tab = btn.getAttribute('data-tab');
-    document.getElementById('panel-chung').style.display = tab==='chung' ? 'block' : 'none';
-    document.getElementById('panel-calloff').style.display = tab==='calloff' ? 'block' : 'none';
-    document.getElementById('panel-tong').style.display = tab==='tong' ? 'block' : 'none';
-    document.getElementById('panel-error').style.display = tab==='error' ? 'block' : 'none';
-    document.getElementById('panel-chi-tiet').style.display = tab==='chi-tiet' ? 'block' : 'none';
-    hideSuggestions(); hideSuggestionsCalloff();
-    hideSuggestionsChiTiet();
-  });
-});
-
-// ========== Input gợi ý Lỗi Chi Tiết ==========
-const inputChiTiet = document.getElementById('inputChiTiet');
-const boxChiTiet = document.getElementById('suggestionsChiTiet');
-
-function hideSuggestionsChiTiet(){
-  boxChiTiet.style.display = 'none';
-  boxChiTiet.innerHTML = '';
-}
-
-inputChiTiet.addEventListener('input', e=>{
-  const q = e.target.value.trim().toLowerCase();
-  boxChiTiet.innerHTML='';
-  if(!q){ boxChiTiet.style.display='none'; return; }
-  const headers = errorData[0].slice(3, 21); // D1→U1
-  const found = headers.filter(h => String(h).toLowerCase().includes(q));
-  found.slice(0,30).forEach(h=>{
-    const d = document.createElement('div');
-    d.textContent = h;
-    d.onclick = ()=>{
-      inputChiTiet.value='';
-      hideSuggestionsChiTiet();
-      showChiTietByHeader(h);
-    };
-    boxChiTiet.appendChild(d);
-  });
-  boxChiTiet.style.display = found.length ? 'block':'none';
-});
-
-// ========== Hiển thị kết quả ==========
-function showChiTietByHeader(headerName){
-  if(!errorData || errorData.length<2) return;
-
-  // tìm cột header
-  const headers = errorData[0];
-  let colIndex = -1;
-  for(let i=3;i<=20;i++){ // D→U
-    if(headers[i]===headerName){ colIndex=i; break; }
-  }
-  if(colIndex===-1) return;
-
-  // lọc các trạm có lỗi
-  const rowsWithError = [];
-  for(let i=1;i<errorData.length;i++){
-    const row = errorData[i];
-    if(row[colIndex] && String(row[colIndex]).toLowerCase()==='e'){
-      rowsWithError.push(row);
+async function setupLoiChiTietTab() {
+  // Fetch sheet error khi load
+  if(!errorData || errorData.length===0){
+    try{
+      const res = await fetch(URL_ERROR);
+      const text = await res.text();
+      const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
+      errorData = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
+    } catch(err){
+      console.error('Lỗi fetch sheet error:', err);
+      return;
     }
   }
 
-  // Bảng tổng hợp theo huyện
-  const summary = new Map();
-  rowsWithError.forEach(r=>{
-    const h = r[1] || '(Không xác định)'; // cột B = huyện
-    if(!summary.has(h)) summary.set(h,0);
-    summary.set(h, summary.get(h)+1);
+  const input = document.getElementById('inputLoiChiTiet');
+  const box = document.getElementById('suggestionsLoiChiTiet');
+  const table = document.getElementById('tableLoiChiTiet');
+  const summary = document.getElementById('summaryLoiChiTiet');
+
+  const errorHeader = errorData[0].slice(3,21); // D1→U1
+  const colHeader = errorData[0].slice(0,3); // A,B,C
+  const colHuyenIdx = 1; // cột B = huyện
+
+  function hideSuggestions(){ box.style.display='none'; box.innerHTML=''; }
+
+  input.addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    box.innerHTML = '';
+    if(!q){ hideSuggestions(); return; }
+    const found = errorHeader.filter(h => h && h.toLowerCase().includes(q)).slice(0,30);
+    found.forEach(s => {
+      const d = document.createElement('div'); 
+      d.textContent = s;
+      d.onclick = ()=>showLoiChiTiet(s);
+      box.appendChild(d);
+    });
+    box.style.display = found.length ? 'block' : 'none';
   });
 
-  // Tạo bảng tổng hợp
-  let summaryHtml = `<h4>${headerName}</h4>`;
-  if(summary.size===0){
-    summaryHtml += `<p>Không có lỗi nào!</p>`;
-    document.getElementById('summaryChiTiet').innerHTML = summaryHtml;
-    document.getElementById('tableChiTiet').innerHTML = '';
-    return;
+  document.getElementById('resetLoiChiTiet').addEventListener('click', ()=>{
+    input.value=''; table.innerHTML=''; summary.innerHTML=''; hideSuggestions();
+  });
+
+  function showLoiChiTiet(selectedHeader){
+    hideSuggestions();
+    input.value='';
+    table.innerHTML=''; summary.innerHTML='';
+
+    const idx = errorData[0].indexOf(selectedHeader);
+    if(idx === -1){ table.innerHTML='Không tìm thấy lỗi'; return; }
+
+    const rows = errorData.slice(1).filter(r => r[idx] && String(r[idx]).toLowerCase() === 'e');
+
+    if(rows.length===0){
+      table.innerHTML = `<p>Lỗi: <b>${selectedHeader}</b></p>Không có trạm nào bị lỗi này`;
+      return;
+    }
+
+    // ===== Bảng tổng hợp theo huyện =====
+    const summaryMap = new Map();
+    rows.forEach(r=>{
+      const huyen = r[colHuyenIdx] || '(Không xác định)';
+      summaryMap.set(huyen, (summaryMap.get(huyen)||0)+1);
+    });
+
+    const entries = Array.from(summaryMap.entries());
+    let sumHtml = `<p style="font-weight:bold;">Lỗi: <b>${selectedHeader}</b></p>`;
+    sumHtml += '<table style="border-collapse:collapse;width:auto;margin-bottom:8px;"><thead><tr style="background:#ffcdcb;color:#000;font-weight:bold;">';
+    sumHtml += '<th style="padding:4px 6px;border:1px solid #999">Huyện</th><th style="padding:4px 6px;border:1px solid #999">Số lỗi</th>';
+    if(entries.length>3){ sumHtml += '<th style="padding:4px 6px;border:1px solid #999">Huyện</th><th style="padding:4px 6px;border:1px solid #999">Số lỗi</th>'; }
+    sumHtml += '</tr></thead><tbody>';
+    for(let i=0;i<entries.length;i+=2){
+      const first = entries[i];
+      const second = entries[i+1];
+      sumHtml += '<tr>';
+      sumHtml += `<td style="padding:4px 6px;border:1px solid #999">${esc(first[0])}</td><td style="padding:4px 6px;border:1px solid #999;text-align:center">${first[1]}</td>`;
+      if(second){ 
+        sumHtml += `<td style="padding:4px 6px;border:1px solid #999">${esc(second[0])}</td><td style="padding:4px 6px;border:1px solid #999;text-align:center">${second[1]}</td>`;
+      } else if(entries.length>3){ 
+        sumHtml += '<td></td><td></td>'; 
+      }
+      sumHtml += '</tr>';
+    }
+    sumHtml += '</tbody></table>';
+    summary.innerHTML = sumHtml;
+
+    // ===== Bảng chi tiết 3 cột =====
+    let html = '<table style="border-collapse:collapse;width:auto;"><thead><tr style="background:#ffcdcb;color:#000;font-weight:bold;">';
+    colHeader.forEach(h=>html+=`<th style="padding:4px 6px;border:1px solid #999">${esc(h||'')}</th>`);
+    html += '</tr></thead><tbody>';
+    rows.forEach((r,i)=>{
+      const bg = i%2===0?'#f0f8ff':'#ffffff';
+      html += `<tr style="background:${bg}">`;
+      html += `<td style="padding:3px 6px;border:1px solid #999">${esc(r[0]||'')}</td>`;
+      html += `<td style="padding:3px 6px;border:1px solid #999">${esc(r[1]||'')}</td>`;
+      html += `<td style="padding:3px 6px;border:1px solid #999">${esc(r[2]||'')}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    table.innerHTML = html;
   }
 
-  const summaryArr = Array.from(summary.entries());
-  summaryHtml += `<table style="border-collapse:collapse;width:auto;margin-bottom:12px">
-    <thead style="background:#005bb5;color:#fff">
-      <tr><th style="padding:6px;border:1px solid #ccc">Huyện</th><th style="padding:6px;border:1px solid #ccc">Số trạm</th></tr>
-    </thead>
-    <tbody>`;
-  summaryArr.forEach(([h, cnt])=>{
-    summaryHtml += `<tr style="background:#f0f8ff"><td style="padding:4px;border:1px solid #ccc">${esc(h)}</td><td style="padding:4px;border:1px solid #ccc;text-align:center">${cnt}</td></tr>`;
+  // Tab click show/hide panel
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
+      document.getElementById('panel-chung').style.display = tab==='chung' ? 'block' : 'none';
+      document.getElementById('panel-calloff').style.display = tab==='calloff' ? 'block' : 'none';
+      document.getElementById('panel-tong').style.display = tab==='tong' ? 'block' : 'none';
+      document.getElementById('panel-error').style.display = tab==='error' ? 'block' : 'none';
+      document.getElementById('panel-loiChiTiet').style.display = tab==='loiChiTiet' ? 'block' : 'none';
+      hideSuggestions(); hideSuggestionsCalloff(); hideSuggestionsLoiChiTiet();
+    });
   });
-  summaryHtml += '</tbody></table>';
-  document.getElementById('summaryChiTiet').innerHTML = summaryHtml;
 
-  // Bảng chi tiết 3 cột A,B,C
-  let tableHtml = `<table style="border-collapse:collapse;width:auto"><thead style="background:#007acc;color:#fff">
-    <tr><th style="padding:6px;border:1px solid #ccc">${esc(headers[0])}</th>
-        <th style="padding:6px;border:1px solid #ccc">${esc(headers[1])}</th>
-        <th style="padding:6px;border:1px solid #ccc">${esc(headers[2])}</th></tr></thead><tbody>`;
-  rowsWithError.forEach((r,i)=>{
-    const bg = i%2===0 ? '#e6f2ff' : '#f0f8ff';
-    tableHtml += `<tr style="background:${bg}"><td style="padding:4px;border:1px solid #ccc">${esc(r[0]||'')}</td>
-                  <td style="padding:4px;border:1px solid #ccc">${esc(r[1]||'')}</td>
-                  <td style="padding:4px;border:1px solid #ccc">${esc(r[2]||'')}</td></tr>`;
-  });
-  tableHtml += '</tbody></table>';
-  document.getElementById('tableChiTiet').innerHTML = tableHtml;
+  function hideSuggestionsLoiChiTiet(){ box.style.display='none'; box.innerHTML=''; }
 }
-
-// Reset input và bảng
-document.getElementById('resetChiTiet').addEventListener('click', ()=>{
-  inputChiTiet.value='';
-  hideSuggestionsChiTiet();
-  document.getElementById('summaryChiTiet').innerHTML='';
-  document.getElementById('tableChiTiet').innerHTML='';
-});
-
-// Utility
-function esc(s){ return String(s===undefined||s===null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+window.addEventListener('load', setupLoiChiTietTab);
 </script>
 
   
