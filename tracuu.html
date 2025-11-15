@@ -450,47 +450,6 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
-<!-- Tabs -->
-<div class="tabs">
-  <button class="tab-btn active" data-tab="chung">Tra cứu chung</button>
-  <button class="tab-btn" data-tab="calloff">Calloff</button>
-  <button class="tab-btn" data-tab="tong">Tổng hợp</button>
-  <button class="tab-btn" data-tab="tag4">Chi tiết lỗi</button>
-  <button class="tab-btn" data-tab="tag5">Tổng hợp lỗi</button>
-</div>
 
-<!-- Panel Tag 4 -->
-<div id="panel-tag4" style="margin-top:12px; display:none;">
-  <!-- Container Tag 4 -->
-  <div id="tag4Container">
-    <input type="text" id="inputTag4" placeholder="Nhập site..." autocomplete="off" style="width:200px;">
-    <div id="suggestionsTag4" style="border:1px solid #eef8ff; max-height:150px; overflow:auto; margin-top:2px;"></div>
-    <div id="siteErrorsTag4" style="margin-top:10px;"></div>
-  </div>
-</div>
-
-<!-- Panel Tag 5 -->
-<div id="panel-tag5" style="margin-top:12px; display:none;">
-  <div id="tag5Container">
-    <p>Tổng hợp lỗi (chưa triển khai)</p>
-  </div>
-</div>
-
-<script>
-// Tab switching
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const tab = btn.getAttribute('data-tab');
-
-    document.getElementById('panel-chung').style.display = tab==='chung' ? 'block' : 'none';
-    document.getElementById('panel-calloff').style.display = tab==='calloff' ? 'block' : 'none';
-    document.getElementById('panel-tong').style.display = tab==='tong' ? 'block' : 'none';
-    document.getElementById('panel-tag4').style.display = tab==='tag4' ? 'block' : 'none';
-    document.getElementById('panel-tag5').style.display = tab==='tag5' ? 'block' : 'none';
-  });
-});
-</script>
 </body>
 </html>
