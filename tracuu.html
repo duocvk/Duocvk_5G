@@ -450,171 +450,234 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
-  <script>
-/* =================== SHEET ERROR =================== */
-const SHEET_ERROR_ID = '1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8';
+ <!-- ----------------- SCRIPT BỔ SUNG CHI TIẾT LỖI & TỔNG HỢP LỖI ----------------- -->
+<script>
+/* ================= CONFIG SHEET ERROR ================= */
+const SHEET_ERROR_ID = '1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8'; // Thay ID sheet nếu khác
 const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ERROR_ID}/gviz/tq?tqx=out:json&sheet=error`;
-let errorData = [], errorHeader = [];
+const IDX_ERROR = { site: 0, huyen: 1, g5: 2, start: 3, end: 16 }; // D-Q = 3-16
 
+let errorData = []; // dữ liệu sheet error
+
+/* ================= Fetch error sheet ================= */
 async function fetchErrorSheet() {
   try {
     const res = await fetch(URL_ERROR);
     const text = await res.text();
     const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
-    const raw = (json.table.rows || []).map(r => (r.c||[]).map(c => c ? c.v : ''));
-    errorHeader = raw[0].slice(3,17); // D1-Q1
-    errorData = raw.slice(1);
-  } catch(e) {
-    console.error(e);
-    alert('Không thể load sheet error');
+    const raw = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
+    const headerIndex = 0;
+    const header = raw[headerIndex] || [];
+    const dataRows = raw.slice(headerIndex+1);
+    return [header, ...dataRows];
+  } catch(err) {
+    alert('Lỗi tải sheet error'); console.error(err); return [];
   }
 }
 
-/* =================== ADD NEW TABS =================== */
-function addErrorTabs() {
-  const tabContainer = document.querySelector('.tabs');
-  const panels = document.querySelector('.card');
+/* ================= UI: tạo 2 tag mới ================= */
+function createErrorTabs() {
+  const container = document.querySelector('.card');
 
-  // Chi tiết lỗi
-  const tabChiTiet = document.createElement('button');
-  tabChiTiet.className = 'tab-btn'; tabChiTiet.dataset.tab = 'chiTietLoi'; tabChiTiet.textContent = 'Chi tiết lỗi';
-  tabContainer.appendChild(tabChiTiet);
+  const divError = document.createElement('div');
+  divError.id = 'panel-error';
+  divError.style.marginTop = '12px';
 
-  const panelChiTiet = document.createElement('div');
-  panelChiTiet.id = 'panel-chiTietLoi'; panelChiTiet.style.display = 'none'; panelChiTiet.style.marginTop = '12px';
-  panelChiTiet.innerHTML = `
-    <div class="controls" style="gap:8px;flex-wrap:wrap">
-      <select id="dropSiteError"><option value="">--Chọn trạm--</option></select>
-      <select id="dropLoiError"><option value="">--Chọn lỗi--</option></select>
+  divError.innerHTML = `
+    <h3>Chi tiết lỗi</h3>
+    <div class="controls" style="gap:12px;flex-wrap:wrap">
+      <div style="position:relative">
+        <input id="inputSiteError" type="text" placeholder="Nhập mã site (ví dụ: 00)">
+        <div id="suggestionsSite" style="position:absolute;top:40px;left:0;background:#fff;border:1px solid #eef8ff;max-height:200px;overflow:auto;z-index:50;"></div>
+      </div>
+      <div style="position:relative">
+        <input id="inputLoiError" type="text" placeholder="Nhập tên lỗi (từ D1-Q1)">
+        <div id="suggestionsLoi" style="position:absolute;top:40px;left:0;background:#fff;border:1px solid #eef8ff;max-height:200px;overflow:auto;z-index:50;"></div>
+      </div>
     </div>
-    <div id="tableChiTietError" style="margin-top:12px"></div>
+    <div id="tableSiteError" style="margin-top:12px"></div>
+    <div id="tableLoiError" style="margin-top:12px"></div>
+    <h3 style="margin-top:24px">Tổng hợp lỗi</h3>
+    <div id="tableSummaryError"></div>
   `;
-  panels.appendChild(panelChiTiet);
+  container.appendChild(divError);
 
-  // Tổng hợp lỗi
-  const tabTongHop = document.createElement('button');
-  tabTongHop.className = 'tab-btn'; tabTongHop.dataset.tab = 'tongHopLoi'; tabTongHop.textContent = 'Tổng hợp lỗi';
-  tabContainer.appendChild(tabTongHop);
+  // Thêm tab button
+  const tabsDiv = document.querySelector('.tabs');
+  const btnError = document.createElement('button');
+  btnError.className = 'tab-btn';
+  btnError.textContent = 'Lỗi';
+  btnError.dataset.tab = 'error';
+  tabsDiv.appendChild(btnError);
 
-  const panelTongHop = document.createElement('div');
-  panelTongHop.id = 'panel-tongHopLoi'; panelTongHop.style.display = 'none'; panelTongHop.style.marginTop = '12px';
-  panelTongHop.innerHTML = `
-    <div class="controls" style="gap:8px;flex-wrap:wrap;align-items:center">
-      <select id="dropHuyenError" multiple style="min-width:200px"><option value="all">Tất cả</option></select>
-      <label><input type="checkbox" id="chkVTT" checked> VTT</label>
-      <label><input type="checkbox" id="chkVCC" checked> VCC</label>
-      <label><input type="checkbox" id="chkVCTL" checked> VCTL</label>
-      <button id="btnTongHopError" class="btn">Thống kê</button>
-    </div>
-    <div id="tableTongHopError" style="margin-top:12px"></div>
-  `;
-  panels.appendChild(panelTongHop);
-
-  // TAB SWITCH
-  [tabChiTiet, tabTongHop].forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-chiTietLoi').style.display = btn.dataset.tab==='chiTietLoi'?'block':'none';
-      document.getElementById('panel-tongHopLoi').style.display = btn.dataset.tab==='tongHopLoi'?'block':'none';
-    });
+  btnError.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btnError.classList.add('active');
+    document.getElementById('panel-chung').style.display = 'none';
+    document.getElementById('panel-calloff').style.display = 'none';
+    document.getElementById('panel-tong').style.display = 'none';
+    document.getElementById('panel-error').style.display = 'block';
+    hideSuggestionsSite(); hideSuggestionsLoi();
   });
 }
 
-/* =================== CHI TIẾT LỖI =================== */
-function initChiTietLoi() {
-  const dropLoi = document.getElementById('dropLoiError');
-  errorHeader.forEach((h,i)=>{ const opt=document.createElement('option'); opt.value=i; opt.textContent=h; dropLoi.appendChild(opt); });
+/* ================= Helpers ================= */
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function hideSuggestionsSite(){ document.getElementById('suggestionsSite').style.display='none'; document.getElementById('suggestionsSite').innerHTML=''; }
+function hideSuggestionsLoi(){ document.getElementById('suggestionsLoi').style.display='none'; document.getElementById('suggestionsLoi').innerHTML=''; }
 
-  const dropSite = document.getElementById('dropSiteError');
-  const siteSet = new Set(); errorData.forEach(r=>{ if(r[0]) siteSet.add(r[0]); });
-  Array.from(siteSet).sort().forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; dropSite.appendChild(o); });
+/* ================= Gợi ý site ================= */
+function setupInputSite() {
+  const input = document.getElementById('inputSiteError');
+  const box = document.getElementById('suggestionsSite');
 
-  dropSite.addEventListener('change',()=>{ renderChiTietError(dropSite.value, dropLoi.value); });
-  dropLoi.addEventListener('change',()=>{ renderChiTietError(dropSite.value, dropLoi.value); });
+  input.addEventListener('input', ()=>{
+    const q = input.value.trim().toLowerCase();
+    box.innerHTML = '';
+    if(!q){ box.style.display='none'; return; }
+
+    const found = [];
+    for(let i=1;i<errorData.length;i++){
+      const site = errorData[i][IDX_ERROR.site];
+      if(site && site.toLowerCase().includes(q)) found.push(site);
+      if(found.length>=30) break;
+    }
+
+    found.forEach(s=>{
+      const div = document.createElement('div');
+      div.textContent = s;
+      div.style.cursor = 'pointer';
+      div.onclick = ()=>{
+        input.value = ''; hideSuggestionsSite();
+        renderSiteError(s);
+      };
+      box.appendChild(div);
+    });
+    box.style.display = found.length ? 'block' : 'none';
+  });
 }
 
-function renderChiTietError(site, loiIdx) {
-  const tableDiv = document.getElementById('tableChiTietError');
-  if(!site){ tableDiv.innerHTML=''; return; }
-  const row = errorData.find(r=>r[0]===site);
+/* ================= Gợi ý lỗi ================= */
+function setupInputLoi() {
+  const input = document.getElementById('inputLoiError');
+  const box = document.getElementById('suggestionsLoi');
+
+  input.addEventListener('input', ()=>{
+    const q = input.value.trim().toLowerCase();
+    box.innerHTML=''; if(!q){ box.style.display='none'; return; }
+
+    const header = errorData[0] || [];
+    const found = header.slice(IDX_ERROR.start, IDX_ERROR.end+1).filter(h=>h.toLowerCase().includes(q));
+
+    found.forEach(h=>{
+      const div = document.createElement('div');
+      div.textContent = h;
+      div.style.cursor='pointer';
+      div.onclick=()=>{
+        input.value=''; hideSuggestionsLoi();
+        renderLoiError(h);
+      };
+      box.appendChild(div);
+    });
+    box.style.display = found.length?'block':'none';
+  });
+}
+
+/* ================= Render site lỗi ================= */
+function renderSiteError(site) {
+  const tableDiv = document.getElementById('tableSiteError');
+  const header = errorData[0] || [];
+  const row = errorData.slice(1).find(r=>r[IDX_ERROR.site]===site);
   if(!row){ tableDiv.innerHTML=`<p>Không tìm thấy trạm ${esc(site)}</p>`; return; }
 
   const loiList = [];
-  errorHeader.forEach((h,i)=>{
-    const val=row[i+3];
-    if((val===1||val==='1') && (loiIdx==='' || loiIdx==i)) loiList.push(h);
-  });
-
-  if(loiList.length===0){
-    tableDiv.innerHTML=`<p>Trạm ${esc(site)} không có lỗi tồn nào.</p>`; return;
+  for(let i=IDX_ERROR.start;i<=IDX_ERROR.end;i++){
+    if(row[i]===1 || row[i]==='1') loiList.push(header[i]);
   }
 
-  let html=`<p>Các lỗi tồn của trạm: ${esc(site)} gồm:</p>`;
-  html+='<table style="border-collapse:collapse;width:100%"><thead><tr>';
-  ['Huyện','Site','5G','Lỗi'].forEach(h=> html+=`<th style="border:1px solid #ccc;white-space:normal;word-wrap:break-word">${h}</th>`);
+  if(loiList.length===0){
+    tableDiv.innerHTML=`<p>Trạm ${esc(site)} không có lỗi tồn nào.</p>`;
+  } else {
+    let html=`<p>Các lỗi tồn của trạm ${esc(site)} gồm:</p><ul>`;
+    loiList.forEach(l=>{ html+=`<li>${esc(l)}</li>`; });
+    html+='</ul>';
+    tableDiv.innerHTML=html;
+  }
+}
+
+/* ================= Render lỗi ================= */
+function renderLoiError(loi) {
+  const tableDiv = document.getElementById('tableLoiError');
+  const header = errorData[0] || [];
+  const rows = errorData.slice(1).filter(r=> {
+    const idx = header.indexOf(loi);
+    return idx>=0 && (r[idx]===1 || r[idx]==='1');
+  });
+  if(rows.length===0){ tableDiv.innerHTML=`<p>Không có trạm nào tồn lỗi ${esc(loi)}</p>`; return; }
+
+  let html='<table style="border-collapse:collapse;width:100%">';
+  html+='<thead><tr>';
+  ['Site','Huyện','5G'].forEach(h=>html+=`<th style="border:1px solid #ccc;padding:4px;text-align:center">${h}</th>`);
   html+='</tr></thead><tbody>';
-  loiList.forEach((l,i)=>{
-    html+=`<tr style="background:${i%2===0?'#f9f9f9':'#fff'}">`;
-    html+=`<td style="border:1px solid #ccc">${esc(row[1])}</td>`;
-    html+=`<td style="border:1px solid #ccc">${esc(row[0])}</td>`;
-    html+=`<td style="border:1px solid #ccc">${esc(row[2])}</td>`;
-    html+=`<td style="border:1px solid #ccc">${esc(l)}</td>`;
+
+  rows.forEach(r=>{
+    html+='<tr>';
+    html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${esc(r[IDX_ERROR.site])}</td>`;
+    html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${esc(r[IDX_ERROR.huyen])}</td>`;
+    html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${esc(r[IDX_ERROR.g5])}</td>`;
     html+='</tr>';
   });
+
   html+='</tbody></table>';
-  tableDiv.innerHTML = html;
+  tableDiv.innerHTML=html;
 }
 
-/* =================== TỔNG HỢP LỖI =================== */
-function initTongHopError() {
-  const dropHuyen = document.getElementById('dropHuyenError');
-  const huyenSet = new Set(); errorData.forEach(r=>{ if(r[1]) huyenSet.add(r[1]); });
-  Array.from(huyenSet).sort().forEach(h=>{ const opt=document.createElement('option'); opt.value=h; opt.textContent=h; dropHuyen.appendChild(opt); });
-  document.getElementById('btnTongHopError').addEventListener('click', renderTongHopError);
-}
+/* ================= Tổng hợp lỗi ================= */
+function renderSummaryError() {
+  const summaryDiv = document.getElementById('tableSummaryError');
+  const rows = errorData.slice(1);
+  const header = errorData[0] || [];
+  if(rows.length===0){ summaryDiv.innerHTML=''; return; }
 
-function renderTongHopError() {
-  const selectedHuyen = Array.from(document.getElementById('dropHuyenError').selectedOptions).map(o=>o.value);
-  const chkVTT = document.getElementById('chkVTT').checked;
-  const chkVCC = document.getElementById('chkVCC').checked;
-  const chkVCTL = document.getElementById('chkVCTL').checked;
-
-  const rows = errorData.filter(r=> selectedHuyen.includes('all') || selectedHuyen.includes(r[1]));
-  const groups = new Map();
+  const groups = {};
   rows.forEach(r=>{
-    const h=r[1]; if(!groups.has(h)) groups.set(h,{total:0,exist:0});
-    groups.get(h).total++;
-    let loiExist=false;
-    if(chkVTT && r.slice(3,6).some(v=>v===1||v==='1')) loiExist=true;
-    if(chkVCC && r.slice(6,15).some(v=>v===1||v==='1')) loiExist=true;
-    if(chkVCTL && r.slice(15,17).some(v=>v===1||v==='1')) loiExist=true;
-    if(loiExist) groups.get(h).exist++;
+    const huyen = r[IDX_ERROR.huyen] || '(Không xác định)';
+    if(!groups[huyen]) groups[huyen]={total:0,tongTramTon:0};
+    groups[huyen].total++;
+    for(let i=IDX_ERROR.start;i<=IDX_ERROR.end;i++){
+      if(r[i]===1 || r[i]==='1'){ groups[huyen].tongTramTon++; break; } // nếu có ít nhất 1 lỗi
+    }
   });
 
   let html='<table style="border-collapse:collapse;width:100%"><thead><tr>';
-  ['Huyện','Tổng số trạm','Số trạm tồn lỗi','% tồn lỗi'].forEach(h=> html+=`<th style="border:1px solid #ccc;white-space:normal;word-wrap:break-word">${h}</th>`);
+  ['Huyện','Tổng số trạm','Số trạm tồn','Tỉ lệ %'].forEach(h=>html+=`<th style="border:1px solid #ccc;padding:4px;text-align:center">${h}</th>`);
   html+='</tr></thead><tbody>';
-  Array.from(groups.entries()).forEach(([h,v],idx)=>{
-    const pct=v.total?v.exist*100/v.total:0;
-    html+=`<tr style="background:${idx%2===0?'#f9f9f9':'#fff'}">`;
-    html+=`<td style="border:1px solid #ccc">${esc(h)}</td>`;
-    html+=`<td style="border:1px solid #ccc;text-align:center">${v.total}</td>`;
-    html+=`<td style="border:1px solid #ccc;text-align:center">${v.exist}</td>`;
-    html+=`<td style="border:1px solid #ccc;text-align:center">${Math.round(pct)}%</td>`;
+
+  for(let huyen in groups){
+    const g = groups[huyen];
+    const rate = g.total?Math.round(g.tongTramTon*100/g.total):0;
+    html+='<tr>';
+    html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${esc(huyen)}</td>`;
+    html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${g.total}</td>`;
+    html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${g.tongTramTon}</td>`;
+    html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${rate}%</td>`;
     html+='</tr>';
-  });
+  }
+
   html+='</tbody></table>';
-  document.getElementById('tableTongHopError').innerHTML = html;
+  summaryDiv.innerHTML=html;
 }
 
-/* =================== INIT =================== */
-window.addEventListener('load', async ()=>{
-  await fetchErrorSheet();
-  addErrorTabs();
-  initChiTietLoi();
-  initTongHopError();
-});
+/* ================= Khởi tạo ================= */
+async function initErrorModule(){
+  errorData = await fetchErrorSheet();
+  createErrorTabs();
+  setupInputSite();
+  setupInputLoi();
+  renderSummaryError();
+}
+
+window.addEventListener('load', initErrorModule);
 </script>
 </body>
 </html>
