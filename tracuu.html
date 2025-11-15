@@ -450,75 +450,47 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
-<!-- BUTTON KÍCH HOẠT TAG 4 -->
-<button id="btnTag4" class="btn" style="margin-top:12px;">Chi tiết lỗi theo trạm</button>
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="chung">Tra cứu chung</button>
+  <button class="tab-btn" data-tab="calloff">Calloff</button>
+  <button class="tab-btn" data-tab="tong">Tổng hợp</button>
+  <button class="tab-btn" data-tab="tag4">Chi tiết lỗi</button>
+  <button class="tab-btn" data-tab="tag5">Tổng hợp lỗi</button>
+</div>
 
-<!-- CONTAINER TAG 4 (ẨN MẶC ĐỊNH) -->
-<div id="tag4Container" style="display:none; margin-top:12px; border-top:1px solid #ccc; padding-top:10px;">
-  <h3>Chi tiết lỗi</h3>
-  <input type="text" id="inputTag4" placeholder="Nhập site..." autocomplete="off" style="width:200px;">
-  <div id="suggestionsTag4" style="border:1px solid #eef8ff; max-height:150px; overflow:auto; margin-top:2px;"></div>
-  <div id="siteErrorsTag4" style="margin-top:10px;"></div>
+<!-- Panel Tag 4 -->
+<div id="panel-tag4" style="margin-top:12px; display:none;">
+  <!-- Container Tag 4 -->
+  <div id="tag4Container">
+    <input type="text" id="inputTag4" placeholder="Nhập site..." autocomplete="off" style="width:200px;">
+    <div id="suggestionsTag4" style="border:1px solid #eef8ff; max-height:150px; overflow:auto; margin-top:2px;"></div>
+    <div id="siteErrorsTag4" style="margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- Panel Tag 5 -->
+<div id="panel-tag5" style="margin-top:12px; display:none;">
+  <div id="tag5Container">
+    <p>Tổng hợp lỗi (chưa triển khai)</p>
+  </div>
 </div>
 
 <script>
-  const btnTag4 = document.getElementById('btnTag4');
-  const tag4Container = document.getElementById('tag4Container');
-  const siteInput4 = document.getElementById('inputTag4');
-  const suggestions4 = document.getElementById('suggestionsTag4');
-  const siteErrors4 = document.getElementById('siteErrorsTag4');
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.getAttribute('data-tab');
 
-  // Hiển thị container khi click button
-  btnTag4.addEventListener('click', () => {
-    tag4Container.style.display = 'block';
-    siteInput4.focus();
+    document.getElementById('panel-chung').style.display = tab==='chung' ? 'block' : 'none';
+    document.getElementById('panel-calloff').style.display = tab==='calloff' ? 'block' : 'none';
+    document.getElementById('panel-tong').style.display = tab==='tong' ? 'block' : 'none';
+    document.getElementById('panel-tag4').style.display = tab==='tag4' ? 'block' : 'none';
+    document.getElementById('panel-tag5').style.display = tab==='tag5' ? 'block' : 'none';
   });
-
-  // Hiển thị gợi ý khi nhập
-  siteInput4.addEventListener('input', function(){
-    const q = this.value.trim().toUpperCase();
-    suggestions4.innerHTML = '';
-    if(!q) return;
-
-    // Dữ liệu sheet error nằm trong sheetData
-    // Giả sử sheet error là sheetData mới load (hoặc bạn load riêng)
-    const errorSheet = sheetData; // Thay bằng sheet chứa sheet 'error' nếu khác
-    const rows = errorSheet.slice(2); // dữ liệu từ dòng 3 trở đi
-    const matches = rows.map(r => r[0]).filter(s => s && s.includes(q));
-
-    matches.forEach(site => {
-      const div = document.createElement('div');
-      div.textContent = site;
-      div.style.cursor = 'pointer';
-      div.style.padding = '2px 5px';
-      div.addEventListener('click', () => {
-        displayErrorsForSite(site);
-        siteInput4.value = '';
-        suggestions4.innerHTML = '';
-      });
-      suggestions4.appendChild(div);
-    });
-  });
-
-  function displayErrorsForSite(site){
-    const errorSheet = sheetData;
-    const row = errorSheet.slice(2).find(r => r[0] === site);
-    if(!row){
-      siteErrors4.innerHTML = `<p>Không tìm thấy trạm ${site}</p>`;
-      return;
-    }
-    let html = `<p>Các lỗi của trạm ${site} là:</p>`;
-    for(let i=3; i<=16; i++){ // cột D→Q
-      if(isOne(row[i])){
-        const title = errorSheet[0][i] || `Lỗi cột ${i+1}`;
-        html += `<div>${title}</div>`;
-      }
-    }
-    siteErrors4.innerHTML = html;
-  }
-
-  // Giúp nhận biết tick = 1
-  function isOne(v){ return v === 1 || v === '1' || v === true; }
+});
 </script>
 </body>
 </html>
