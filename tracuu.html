@@ -450,208 +450,218 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
-  <!-- ================= BỔ SUNG: Chi tiết lỗi & Tổng hợp lỗi ================= -->
+ <!-- =================== BỔ SUNG LỖI =================== -->
+<div class="card" style="margin-top:16px">
+  <div class="top">
+    <div class="tabs">
+      <button class="tab-btn" data-tab="errorDetail">Chi tiết lỗi</button>
+      <button class="tab-btn" data-tab="errorSummary">Tổng hợp lỗi</button>
+    </div>
+  </div>
+
+  <!-- Chi tiết lỗi -->
+  <div id="panel-errorDetail" style="margin-top:12px; display:none">
+    <div class="controls">
+      <div style="position:relative">
+        <input id="inputSiteError" type="text" placeholder="Nhập mã site (ví dụ: 000)">
+        <div id="suggestionsError" style="display:none"></div>
+      </div>
+      <select id="dropHuyenError" multiple style="min-width:180px;"></select>
+      <select id="dropLoiError" style="min-width:180px;"></select>
+      <label><input type="checkbox" id="chkVTT" checked> VTT</label>
+      <label><input type="checkbox" id="chkVCC" checked> VCC</label>
+      <label><input type="checkbox" id="chkVCTL" checked> VCTL</label>
+      <button id="resetError" class="btn ghost">Reset</button>
+    </div>
+    <div id="tableError"></div>
+  </div>
+
+  <!-- Tổng hợp lỗi -->
+  <div id="panel-errorSummary" style="margin-top:12px; display:none">
+    <div class="controls">
+      <select id="dropHuyenSummary" multiple style="min-width:200px;"></select>
+      <label><input type="checkbox" id="chkVTTSum" checked> VTT</label>
+      <label><input type="checkbox" id="chkVCCSum" checked> VCC</label>
+      <label><input type="checkbox" id="chkVCTLSum" checked> VCTL</label>
+      <button id="btnRenderSummary" class="btn">Xem tổng hợp</button>
+    </div>
+    <div id="summaryError"></div>
+  </div>
+</div>
+
+<style>
+/* Bảng lỗi */
+.table-error { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
+.table-error th, .table-error td { border: 1px solid #ccc; padding: 6px; text-align: center; vertical-align: middle; }
+.table-error th { background: #f4f6f8; white-space: normal; word-wrap: break-word; }
+.table-error td { white-space: nowrap; }
+.table-error tr:nth-child(even) { background: #f9f9f9; }
+.table-error tr:nth-child(odd) { background: #ffffff; }
+/* cột lỗi D→Q */
+.table-error th.lcol, .table-error td.lcol { width: 80px; font-size:12px; }
+</style>
+
 <script>
 const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
-const IDX_ERROR = { site:0, huyen:1, loiStart:3 }; // D=3 → Q=16
-
 let errorData = [];
 
-/* ================= Fetch error sheet ================= */
+// ==================== FETCH ERROR SHEET ====================
 async function fetchError(){
   try{
     const res = await fetch(URL_ERROR);
     const text = await res.text();
     const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
-    const raw = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
-    errorData = raw;
-    setupErrorDetail();
-    setupErrorSummary();
-  }catch(err){
-    console.error('Lỗi tải sheet Error:', err);
+    errorData = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
+    setupErrorUI();
+  } catch(err){
+    console.error('Lỗi tải sheet error:', err);
   }
 }
 
-/* ================= Tabs ================= */
-const tabErrorDetailBtn = document.createElement('button');
-tabErrorDetailBtn.className = 'tab-btn';
-tabErrorDetailBtn.setAttribute('data-tab','error-detail');
-tabErrorDetailBtn.textContent = 'Chi tiết lỗi';
-const tabErrorSummaryBtn = document.createElement('button');
-tabErrorSummaryBtn.className = 'tab-btn';
-tabErrorSummaryBtn.setAttribute('data-tab','error-summary');
-tabErrorSummaryBtn.textContent = 'Tổng hợp lỗi';
-document.querySelector('.tabs').appendChild(tabErrorDetailBtn);
-document.querySelector('.tabs').appendChild(tabErrorSummaryBtn);
+// ==================== TAB ====================
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const tab = btn.getAttribute('data-tab');
+    document.getElementById('panel-errorDetail').style.display = tab==='errorDetail' ? 'block':'none';
+    document.getElementById('panel-errorSummary').style.display = tab==='errorSummary' ? 'block':'none';
+  });
+});
 
-tabErrorDetailBtn.addEventListener('click',()=>showErrorTab('error-detail'));
-tabErrorSummaryBtn.addEventListener('click',()=>showErrorTab('error-summary'));
+// ==================== CHI TIẾT LỖI ====================
+function setupErrorUI(){
+  if(errorData.length < 2) return;
 
-function showErrorTab(tab){
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-  document.getElementById('panel-chung').style.display='none';
-  document.getElementById('panel-calloff').style.display='none';
-  document.getElementById('panel-tong').style.display='none';
-  document.getElementById('panel-error-detail').style.display=tab==='error-detail'?'block':'none';
-  document.getElementById('panel-error-summary').style.display=tab==='error-summary'?'block':'none';
-  hideSuggestions(); hideSuggestionsCalloff();
-}
+  const header = errorData[0];
+  const loiCols = []; // D→Q
+  for(let i=3;i<=16;i++) loiCols.push(i);
 
-/* ================= CHI TIẾT LỖI ================= */
-function setupErrorDetail(){
-  const header = errorData[0] || [];
-  const loiHeaders = header.slice(IDX_ERROR.loiStart, IDX_ERROR.loiStart+14); // D→Q
-  const dropLoi = document.getElementById('dropLoiError');
-  dropLoi.innerHTML = '<option value="">Tất cả lỗi</option>';
-  loiHeaders.forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; dropLoi.appendChild(o); });
+  // Fill dropdown lỗi
+  const loiSelect = document.getElementById('dropLoiError');
+  loiSelect.innerHTML = '<option value="">--Chọn lỗi--</option>';
+  loiCols.forEach(i=>{
+    const opt = document.createElement('option'); opt.value=i; opt.textContent=header[i]; loiSelect.appendChild(opt);
+  });
 
-  // Lấy các huyện
+  // Fill dropdown huyện
   const huyenSet = new Set();
-  for(let i=1;i<errorData.length;i++){
-    if(errorData[i][IDX_ERROR.huyen]) huyenSet.add(errorData[i][IDX_ERROR.huyen]);
-  }
-  const dropHuyen = document.getElementById('dropHuyenError');
-  dropHuyen.innerHTML='';
-  Array.from(huyenSet).sort().forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; dropHuyen.appendChild(o); });
+  for(let i=1;i<errorData.length;i++) huyenSet.add(errorData[i][1]);
+  const huyenArr = Array.from(huyenSet).sort();
+  const huyenEl = document.getElementById('dropHuyenError');
+  huyenEl.innerHTML = '';
+  huyenArr.forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; huyenEl.appendChild(o); });
 
-  // Input site autocomplete
-  const input = document.getElementById('inputSiteError');
-  const box = document.getElementById('suggestionsSiteError');
-  input.addEventListener('input',(e)=>{
+  // Fill dropdown tổng hợp
+  const huyenSumEl = document.getElementById('dropHuyenSummary');
+  huyenSumEl.innerHTML = '';
+  huyenArr.forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; huyenSumEl.appendChild(o); });
+
+  // Input site suggestions
+  const inputSite = document.getElementById('inputSiteError');
+  const sugBox = document.getElementById('suggestionsError');
+
+  inputSite.addEventListener('input', e=>{
     const q = e.target.value.trim().toLowerCase();
-    box.innerHTML='';
-    if(!q){ box.style.display='none'; return; }
+    sugBox.innerHTML=''; if(!q){ sugBox.style.display='none'; return; }
     const found = new Set();
     for(let i=1;i<errorData.length;i++){
-      const v = errorData[i][IDX_ERROR.site];
-      if(v && String(v).toLowerCase().includes(q)) found.add(v);
+      const site = errorData[i][0];
+      if(site && site.toLowerCase().includes(q)) found.add(site);
       if(found.size>=30) break;
     }
     Array.from(found).forEach(s=>{
       const d=document.createElement('div'); d.textContent=s;
-      d.onclick = ()=>{
-        input.value=''; box.style.display='none';
-        drawErrorDetail([s], dropHuyen.value ? [dropHuyen.value] : null, dropLoi.value || null);
+      d.onclick=()=>{
+        inputSite.value=''; sugBox.innerHTML=''; sugBox.style.display='none';
+        renderErrorDetail(s);
       };
-      box.appendChild(d);
+      sugBox.appendChild(d);
     });
-    box.style.display = found.size?'block':'none';
+    sugBox.style.display = found.size? 'block':'none';
   });
 
-  dropHuyen.addEventListener('change',()=>drawErrorDetail(null, Array.from(dropHuyen.selectedOptions).map(o=>o.value), dropLoi.value || null));
-  dropLoi.addEventListener('change',()=>drawErrorDetail(null, Array.from(dropHuyen.selectedOptions).map(o=>o.value), dropLoi.value || null));
-
-  document.getElementById('resetErrorDetail').addEventListener('click',()=>{
-    input.value=''; dropHuyen.value=''; dropLoi.value='';
-    drawErrorDetail();
-    box.innerHTML=''; box.style.display='none';
+  document.getElementById('resetError').addEventListener('click', ()=>{
+    inputSite.value='';
+    huyenEl.selectedIndex=-1;
+    loiSelect.selectedIndex=0;
+    document.getElementById('chkVTT').checked=true;
+    document.getElementById('chkVCC').checked=true;
+    document.getElementById('chkVCTL').checked=true;
+    document.getElementById('tableError').innerHTML='';
   });
-
-  drawErrorDetail();
 }
 
-function drawErrorDetail(sites=null,huyens=null,loi=null){
-  let rows = errorData.slice(1);
-  if(sites) rows = rows.filter(r=>sites.includes(r[IDX_ERROR.site]));
-  if(huyens && huyens.length) rows = rows.filter(r=>huyens.includes(r[IDX_ERROR.huyen]));
-  const header = errorData[0].slice(IDX_ERROR.loiStart, IDX_ERROR.loiStart+14);
-  if(loi) rows = rows.filter(r=>{
-    const idx = header.indexOf(loi);
-    return idx>=0 && r[IDX_ERROR.loiStart+idx]==1;
+// ==================== RENDER CHI TIẾT ====================
+function renderErrorDetail(site=''){
+  const huyenSel = Array.from(document.getElementById('dropHuyenError').selectedOptions).map(o=>o.value);
+  const loiCol = parseInt(document.getElementById('dropLoiError').value);
+  const chkVTT = document.getElementById('chkVTT').checked;
+  const chkVCC = document.getElementById('chkVCC').checked;
+  const chkVCTL = document.getElementById('chkVCTL').checked;
+
+  const header = errorData[0]; const rows = errorData.slice(1).filter(r=>{
+    if(site && !r[0].includes(site)) return false;
+    if(huyenSel.length && !huyenSel.includes(r[1])) return false;
+    return true;
   });
 
-  let html = '<table><thead><tr><th>Site</th><th>Huyện</th>';
-  header.forEach(h=>html+=`<th>${esc(h)}</th>`);
-  html+='</tr></thead><tbody>';
+  let html = '<table class="table-error"><thead><tr><th>Site</th><th>Huyện</th><th>5G</th>';
+  for(let i=3;i<=16;i++) html += `<th class="lcol">${header[i]}</th>`;
+  html += '</tr></thead><tbody>';
+
   rows.forEach(r=>{
-    html+=`<tr><td>${esc(r[IDX_ERROR.site])}</td><td>${esc(r[IDX_ERROR.huyen])}</td>`;
-    for(let i=0;i<header.length;i++){
-      const val = r[IDX_ERROR.loiStart+i]; html+=`<td>${val==1?'✔':''}</td>`;
+    html += '<tr>';
+    html += `<td>${r[0]||''}</td><td>${r[1]||''}</td><td>${r[2]||''}</td>`;
+    for(let i=3;i<=16;i++){
+      let val = r[i]===1?'X':'';
+      if(i<=5 && !chkVTT) val='';
+      if(i>=6 && i<=14 && !chkVCC) val='';
+      if(i>=15 && i<=16 && !chkVCTL) val='';
+      if(loiCol && i!==loiCol) val=''; // chỉ hiện cột lỗi chọn
+      html += `<td class="lcol">${val}</td>`;
     }
-    html+='</tr>';
+    html += '</tr>';
   });
-  html+='</tbody></table>';
-  document.getElementById('tableErrorDetail').innerHTML=html;
+  html += '</tbody></table>';
+  document.getElementById('tableError').innerHTML = html;
 }
 
-/* ================= TỔNG HỢP LỖI ================= */
-function setupErrorSummary(){
-  const huyenSet = new Set();
-  for(let i=1;i<errorData.length;i++){
-    if(errorData[i][IDX_ERROR.huyen]) huyenSet.add(errorData[i][IDX_ERROR.huyen]);
-  }
-  const dropHuyen = document.getElementById('dropHuyenSummary');
-  dropHuyen.innerHTML='';
-  Array.from(huyenSet).sort().forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; dropHuyen.appendChild(o); });
+// ==================== TỔNG HỢP LỖI ====================
+document.getElementById('btnRenderSummary').addEventListener('click', ()=>{
+  const huyenSel = Array.from(document.getElementById('dropHuyenSummary').selectedOptions).map(o=>o.value);
+  const chkVTT = document.getElementById('chkVTTSum').checked;
+  const chkVCC = document.getElementById('chkVCCSum').checked;
+  const chkVCTL = document.getElementById('chkVCTLSum').checked;
 
-  document.getElementById('btnErrorSummary').addEventListener('click', drawErrorSummary);
-}
+  const header = errorData[0]; const rows = errorData.slice(1);
+  const loiCols = [];
+  for(let i=3;i<=16;i++) loiCols.push(i);
 
-function drawErrorSummary(){
-  const checkedUnits = Array.from(document.querySelectorAll('.unitChk:checked')).map(c=>c.value);
-  if(!checkedUnits.length) { document.getElementById('tableErrorSummary').innerHTML='<p>Chọn ít nhất 1 đơn vị</p>'; return; }
-  const huyens = Array.from(document.getElementById('dropHuyenSummary').selectedOptions).map(o=>o.value);
-  let rows = errorData.slice(1);
-  if(huyens.length) rows = rows.filter(r=>huyens.includes(r[IDX_ERROR.huyen]));
-
-  const header = errorData[0].slice(IDX_ERROR.loiStart, IDX_ERROR.loiStart+14);
-  // Map đơn vị
-  const unitCols = { VTT:[0,1,2], VCC:[3,4,5,6,7,8,9,10,11], VCTL:[12,13] }; // D→Q
-  let result = {}; // { huyện: { lỗi: count } }
+  const groups = new Map();
   rows.forEach(r=>{
-    const huyen = r[IDX_ERROR.huyen]||'(Không xác định)';
-    if(!result[huyen]) result[huyen]={};
-    header.forEach((l,idx)=>{
-      let val=0;
-      checkedUnits.forEach(u=>{
-        const cols = unitCols[u];
-        if(cols.includes(idx) && r[IDX_ERROR.loiStart+idx]==1) val=1;
-      });
-      if(val) result[huyen][l] = (result[huyen][l]||0)+1;
+    if(huyenSel.length && !huyenSel.includes(r[1])) return;
+    loiCols.forEach(ci=>{
+      if(ci<=5 && !chkVTT) return;
+      if(ci>=6 && ci<=14 && !chkVCC) return;
+      if(ci>=15 && ci<=16 && !chkVCTL) return;
+      if(r[ci]===1){
+        const key = `${r[1]}||${header[ci]}`;
+        if(!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(r[0]);
+      }
     });
   });
 
-  // Render table
-  let html='<table><thead><tr><th>Huyện</th>';
-  header.forEach(l=>html+=`<th>${esc(l)}</th>`);
-  html+='</tr></thead><tbody>';
-  Object.entries(result).forEach(([h,r])=>{
-    html+=`<tr><td>${esc(h)}</td>`;
-    header.forEach(l=>html+=`<td>${r[l]||0}</td>`);
-    html+='</tr>';
+  let html = '<table class="table-error"><thead><tr><th>Huyện</th><th>Lỗi</th><th>Số site</th><th>Site</th></tr></thead><tbody>';
+  Array.from(groups.entries()).forEach(([k,v])=>{
+    const [h,l] = k.split('||');
+    html += `<tr><td>${h}</td><td>${l}</td><td>${v.length}</td><td>${v.join(', ')}</td></tr>`;
   });
-  html+='</tbody></table>';
-  document.getElementById('tableErrorSummary').innerHTML=html;
-}
+  html += '</tbody></table>';
+  document.getElementById('summaryError').innerHTML = html;
+});
 
-/* ================= Start fetch ================= */
-window.addEventListener('load',fetchError);
+// ==================== LOAD ERROR SHEET ====================
+fetchError();
 </script>
-
-<!-- Panels HTML -->
-<div id="panel-error-detail" style="display:none; margin-top:12px" class="card">
-  <div class="controls">
-    <div style="position:relative">
-      <input id="inputSiteError" type="text" placeholder="Nhập mã site...">
-      <div id="suggestionsSiteError" style="display:none"></div>
-    </div>
-    <select id="dropHuyenError" multiple style="min-width:200px"></select>
-    <select id="dropLoiError" style="min-width:200px"></select>
-    <button id="resetErrorDetail" class="btn ghost">Reset</button>
-  </div>
-  <div id="tableErrorDetail"></div>
-</div>
-
-<div id="panel-error-summary" style="display:none; margin-top:12px" class="card">
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <label><input type="checkbox" class="unitChk" value="VTT"> VTT</label>
-    <label><input type="checkbox" class="unitChk" value="VCC"> VCC</label>
-    <label><input type="checkbox" class="unitChk" value="VCTL"> VCTL</label>
-    <select id="dropHuyenSummary" multiple style="min-width:200px"></select>
-    <button id="btnErrorSummary" class="btn">Thống kê</button>
-  </div>
-  <div id="tableErrorSummary" style="margin-top:12px"></div>
-</div>
 </body>
 </html>
