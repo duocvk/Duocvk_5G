@@ -450,12 +450,12 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
-<!-- ==================== CODE BỔ SUNG CHO CHI TIẾT LỖI & TỔNG HỢP LỖI ==================== -->
 <script>
+// ==================== SHEET ERROR ====================
 const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
 let errorData = [];
 
-// thêm tab button mới
+// thêm tab mới
 const containerTabs = document.querySelector('.tabs');
 const btnDetail = document.createElement('button');
 btnDetail.className = 'tab-btn';
@@ -469,9 +469,8 @@ btnSummaryError.textContent = 'Tổng hợp lỗi';
 btnSummaryError.dataset.tab = 'errorSummary';
 containerTabs.appendChild(btnSummaryError);
 
-// thêm panel mới
+// thêm panel
 const card = document.querySelector('.card');
-
 const panelDetail = document.createElement('div');
 panelDetail.id = 'panel-errorDetail';
 panelDetail.style.display = 'none';
@@ -488,11 +487,11 @@ card.appendChild(panelSummary);
 function switchErrorTabs(tab){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   tab.classList.add('active');
-  document.getElementById('panel-chung').style.display = 'none';
-  document.getElementById('panel-calloff').style.display = 'none';
-  document.getElementById('panel-tong').style.display = 'none';
-  document.getElementById('panel-errorDetail').style.display = 'none';
-  document.getElementById('panel-errorSummary').style.display = 'none';
+  document.getElementById('panel-chung').style.display='none';
+  document.getElementById('panel-calloff').style.display='none';
+  document.getElementById('panel-tong').style.display='none';
+  document.getElementById('panel-errorDetail').style.display='none';
+  document.getElementById('panel-errorSummary').style.display='none';
   const t = tab.dataset.tab;
   if(t==='errorDetail') document.getElementById('panel-errorDetail').style.display='block';
   if(t==='errorSummary') document.getElementById('panel-errorSummary').style.display='block';
@@ -500,68 +499,44 @@ function switchErrorTabs(tab){
 btnDetail.addEventListener('click',()=>switchErrorTabs(btnDetail));
 btnSummaryError.addEventListener('click',()=>switchErrorTabs(btnSummaryError));
 
-// fetch sheet error
+// fetch error sheet
 async function fetchErrorSheet(){
   try{
-    const [header, ...rows] = await fetchGviz(URL_ERROR);
+    const [header,...rows] = await fetchGviz(URL_ERROR);
     errorData = [header,...rows];
     setupErrorDetail();
     setupErrorSummary();
-  }catch(e){console.error('Lỗi tải sheet error', e);}
+  }catch(e){console.error('Lỗi tải sheet error',e);}
 }
 
-// ================== Chi tiết lỗi ==================
+// ================= Chi tiết lỗi =================
 function setupErrorDetail(){
   const panel = document.getElementById('panel-errorDetail');
   panel.innerHTML = `
-  <div class="controls" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-    <div style="position:relative">
-      <input id="inputSiteError" type="text" placeholder="Tìm mã site..." style="min-width:140px">
-      <div id="suggestionsError" style="display:none;position:absolute;top:38px;left:0;background:#fff;border:1px solid #e8f4ff;border-radius:8px;max-height:200px;overflow:auto;z-index:60"></div>
+    <div class="controls" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <div style="position:relative">
+        <input id="inputSiteError" type="text" placeholder="Tìm mã site..." style="min-width:140px">
+        <div id="suggestionsError" style="display:none;position:absolute;top:38px;left:0;background:#fff;border:1px solid #e8f4ff;border-radius:8px;max-height:200px;overflow:auto;z-index:60"></div>
+      </div>
+      <select id="dropHuyenError" multiple size="4" style="min-width:160px"></select>
+      <select id="dropLoiError" style="min-width:200px"></select>
+      <label><input type="checkbox" id="chkVTT" checked> VTT</label>
+      <label><input type="checkbox" id="chkVCC" checked> VCC</label>
+      <label><input type="checkbox" id="chkVCTL" checked> VCTL</label>
+      <button id="btnFilterError" class="btn">Lọc</button>
+      <button id="btnResetError" class="btn ghost">Reset</button>
     </div>
-    <select id="dropHuyenError" multiple size="3" style="min-width:140px"></select>
-    <select id="dropLoiError" style="min-width:200px"></select>
-    <label><input type="checkbox" id="chkVTT" checked> VTT</label>
-    <label><input type="checkbox" id="chkVCC" checked> VCC</label>
-    <label><input type="checkbox" id="chkVCTL" checked> VCTL</label>
-    <button id="btnFilterError" class="btn">Lọc</button>
-    <button id="btnResetError" class="btn ghost">Reset</button>
-  </div>
-  <div id="tableError"></div>
+    <div style="overflow:auto"><div id="tableError"></div></div>
   `;
 
   fillHuyenError();
   fillLoiError();
-
-  const inputSite = document.getElementById('inputSiteError');
-  const box = document.getElementById('suggestionsError');
-
-  inputSite.addEventListener('input', (e)=>{
-    const q = e.target.value.trim().toLowerCase();
-    box.innerHTML = '';
-    if(!q){ box.style.display='none'; return; }
-    const found = new Set();
-    for(let i=1;i<errorData.length;i++){
-      const site = errorData[i][0]; // cột A
-      if(site && site.toLowerCase().includes(q)) found.add(site);
-      if(found.size>=30) break;
-    }
-    Array.from(found).forEach(s=>{
-      const div = document.createElement('div');
-      div.textContent = s;
-      div.onclick = ()=>{
-        inputSite.value=''; box.innerHTML=''; box.style.display='none';
-        drawErrorRows([errorData[0], ...errorData.slice(1).filter(r=>r[0]===s)]);
-      };
-      box.appendChild(div);
-    });
-    box.style.display = found.size ? 'block' : 'none';
-  });
+  setupInputSite();
 
   document.getElementById('btnFilterError').addEventListener('click', drawErrorRowsFiltered);
   document.getElementById('btnResetError').addEventListener('click', ()=>{
     document.getElementById('inputSiteError').value='';
-    document.getElementById('dropHuyenError').selectedIndex=-1;
+    Array.from(document.getElementById('dropHuyenError').options).forEach(o=>o.selected=false);
     document.getElementById('chkVTT').checked=true;
     document.getElementById('chkVCC').checked=true;
     document.getElementById('chkVCTL').checked=true;
@@ -574,7 +549,7 @@ function setupErrorDetail(){
 function fillHuyenError(){
   const sel = document.getElementById('dropHuyenError');
   const setH = new Set();
-  for(let i=1;i<errorData.length;i++){ const h=errorData[i][1]; if(h) setH.add(h); }
+  for(let i=1;i<errorData.length;i++){ const h=errorData[i][1]; if(h) setH.add(h);}
   sel.innerHTML='';
   Array.from(setH).sort().forEach(v=>{
     const o = document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
@@ -583,12 +558,37 @@ function fillHuyenError(){
 
 function fillLoiError(){
   const sel = document.getElementById('dropLoiError');
-  const header = errorData[0];
   sel.innerHTML='';
-  for(let i=3;i<=16;i++){ // D-Q
-    const o = document.createElement('option'); o.value=i; o.textContent=header[i]||`Lỗi ${i}`;
+  const header = errorData[0];
+  for(let i=3;i<=16;i++){
+    const o = document.createElement('option');
+    o.value=i;
+    o.textContent = header[i]||`Lỗi ${i-2}`;
     sel.appendChild(o);
   }
+}
+
+function setupInputSite(){
+  const inputSite = document.getElementById('inputSiteError');
+  const box = document.getElementById('suggestionsError');
+  inputSite.addEventListener('input',(e)=>{
+    const q = e.target.value.trim().toLowerCase();
+    box.innerHTML='';
+    if(!q){box.style.display='none'; return;}
+    const found = new Set();
+    for(let i=1;i<errorData.length;i++){
+      const site = errorData[i][0];
+      if(site && site.toLowerCase().includes(q)) found.add(site);
+      if(found.size>=30) break;
+    }
+    Array.from(found).forEach(s=>{
+      const div = document.createElement('div');
+      div.textContent=s;
+      div.onclick=()=>{ inputSite.value=''; box.innerHTML=''; box.style.display='none'; drawErrorRows([errorData[0], ...errorData.slice(1).filter(r=>r[0]===s)]);}
+      box.appendChild(div);
+    });
+    box.style.display = found.size? 'block':'none';
+  });
 }
 
 function drawErrorRowsFiltered(){
@@ -599,7 +599,6 @@ function drawErrorRowsFiltered(){
   const loiIdx = parseInt(document.getElementById('dropLoiError').value);
   let rows = errorData.slice(1);
   if(selectedHuyen.length>0) rows = rows.filter(r=>selectedHuyen.includes(r[1]));
-  if(!chkVTT && !chkVCC && !chkVCTL){ /* none selected */ rows = [];}
   drawErrorRows(rows, loiIdx, chkVTT, chkVCC, chkVCTL);
 }
 
@@ -607,23 +606,21 @@ function drawErrorRows(rows, loiIdx=null, vtt=true, vcc=true, vctl=true){
   const header = errorData[0];
   let html='<table style="border-collapse:collapse;width:100%;font-size:13px"><thead><tr>';
   header.forEach((h,i)=>{
-    const w = (i>=3 && i<=16) ? '80px':'auto';
-    html+=`<th style="border:1px solid #eef8ff;padding:4px;word-wrap:break-word;width:${w}">${esc(h||'')}</th>`;
+    const w = (i>=3 && i<=16)?'80px':'auto';
+    html+=`<th style="border:1px solid #ccc;padding:4px;word-wrap:break-word;width:${w};white-space:normal">${esc(h||'')}</th>`;
   });
   html+='</tr></thead><tbody>';
   rows.forEach((r,idx)=>{
-    const bg = idx%2===0 ? '#fdfdfd':'#f0faff';
+    const bg = idx%2===0?'#fdfdfd':'#f0faff';
     html+=`<tr style="background:${bg}">`;
     for(let i=0;i<r.length;i++){
       if(i>=3 && i<=16){
         let show = false;
-        if(i<=5 && vtt) show = true;
-        if(i>=6 && i<=14 && vcc) show = true;
-        if(i>=15 && i<=16 && vctl) show = true;
-        html+=`<td style="border:1px solid #eef8ff;padding:4px;text-align:center">${show?r[i]||'' : ''}</td>`;
-      }else{
-        html+=`<td style="border:1px solid #eef8ff;padding:4px">${esc(r[i]||'')}</td>`;
-      }
+        if(i<=5 && vtt) show=true;
+        if(i>=6 && i<=14 && vcc) show=true;
+        if(i>=15 && i<=16 && vctl) show=true;
+        html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${show?r[i]||'':''}</td>`;
+      } else html+=`<td style="border:1px solid #ccc;padding:4px">${esc(r[i]||'')}</td>`;
     }
     html+='</tr>';
   });
@@ -631,18 +628,18 @@ function drawErrorRows(rows, loiIdx=null, vtt=true, vcc=true, vctl=true){
   document.getElementById('tableError').innerHTML=html;
 }
 
-// ================== Tổng hợp lỗi ==================
+// ================= Tổng hợp lỗi =================
 function setupErrorSummary(){
   const panel = document.getElementById('panel-errorSummary');
   panel.innerHTML=`
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-      <select id="dropHuyenSummary" multiple size="3" style="min-width:140px"></select>
+      <select id="dropHuyenSummary" multiple size="4" style="min-width:160px"></select>
       <label><input type="checkbox" id="chkVTTSum" checked> VTT</label>
       <label><input type="checkbox" id="chkVCCSum" checked> VCC</label>
       <label><input type="checkbox" id="chkVCTLSum" checked> VCTL</label>
       <button id="btnSummaryErrorGo" class="btn">Thống kê</button>
     </div>
-    <div id="tableSummaryError"></div>
+    <div style="overflow:auto"><div id="tableSummaryError"></div></div>
   `;
   const selH = document.getElementById('dropHuyenSummary');
   const setH = new Set();
@@ -666,20 +663,19 @@ function drawErrorSummary(){
     if(i>=6 && i<=14 && vcc) loiCols.push(i);
     if(i>=15 && i<=16 && vctl) loiCols.push(i);
   }
-  let html='<table style="border-collapse:collapse;width:100%;font-size:13px"><thead><tr><th>Huyện</th><th>Site</th>';
-  loiCols.forEach(i=>html+=`<th style="width:80px;border:1px solid #eef8ff">${esc(header[i])}</th>`);
+  let html='<table style="border-collapse:collapse;width:100%;font-size:13px"><thead><tr><th style="border:1px solid #ccc;padding:4px">Huyện</th><th style="border:1px solid #ccc;padding:4px">Site</th>';
+  loiCols.forEach(i=>html+=`<th style="border:1px solid #ccc;width:80px;white-space:normal;word-wrap:break-word;padding:4px">${esc(header[i])}</th>`);
   html+='</tr></thead><tbody>';
   rows.forEach((r,idx)=>{
     const bg = idx%2===0?'#fdfdfd':'#f0faff';
-    html+=`<tr style="background:${bg}"><td style="border:1px solid #eef8ff;padding:4px">${esc(r[1])}</td><td style="border:1px solid #eef8ff;padding:4px">${esc(r[0])}</td>`;
-    loiCols.forEach(i=>html+=`<td style="border:1px solid #eef8ff;padding:4px;text-align:center">${r[i]||''}</td>`);
+    html+=`<tr style="background:${bg}"><td style="border:1px solid #ccc;padding:4px">${esc(r[1])}</td><td style="border:1px solid #ccc;padding:4px">${esc(r[0])}</td>`;
+    loiCols.forEach(i=>html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${r[i]||''}</td>`);
     html+='</tr>';
   });
   html+='</tbody></table>';
   document.getElementById('tableSummaryError').innerHTML=html;
 }
 
-// ================== Khởi chạy ==================
 window.addEventListener('load', fetchErrorSheet);
 </script>
 </body>
