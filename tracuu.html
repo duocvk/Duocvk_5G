@@ -450,233 +450,164 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
-<script>
-// ==================== SHEET ERROR ====================
+/* ================= BỔ SUNG MỚI: Chi tiết lỗi & Tổng hợp lỗi ================= */
+
+/* Sheet error */
 const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
+const IDX_ERR = { site:0, huyen:1, loaiStart:3, loaiEnd:16 }; // D-Q
+
 let errorData = [];
+let errorHeader = [];
 
-// thêm tab mới
-const containerTabs = document.querySelector('.tabs');
-const btnDetail = document.createElement('button');
-btnDetail.className = 'tab-btn';
-btnDetail.textContent = 'Chi tiết lỗi';
-btnDetail.dataset.tab = 'errorDetail';
-containerTabs.appendChild(btnDetail);
-
-const btnSummaryError = document.createElement('button');
-btnSummaryError.className = 'tab-btn';
-btnSummaryError.textContent = 'Tổng hợp lỗi';
-btnSummaryError.dataset.tab = 'errorSummary';
-containerTabs.appendChild(btnSummaryError);
-
-// thêm panel
-const card = document.querySelector('.card');
-const panelDetail = document.createElement('div');
-panelDetail.id = 'panel-errorDetail';
-panelDetail.style.display = 'none';
-panelDetail.style.marginTop = '12px';
-card.appendChild(panelDetail);
-
-const panelSummary = document.createElement('div');
-panelSummary.id = 'panel-errorSummary';
-panelSummary.style.display = 'none';
-panelSummary.style.marginTop = '12px';
-card.appendChild(panelSummary);
-
-// xử lý tab button
-function switchErrorTabs(tab){
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  tab.classList.add('active');
-  document.getElementById('panel-chung').style.display='none';
-  document.getElementById('panel-calloff').style.display='none';
-  document.getElementById('panel-tong').style.display='none';
-  document.getElementById('panel-errorDetail').style.display='none';
-  document.getElementById('panel-errorSummary').style.display='none';
-  const t = tab.dataset.tab;
-  if(t==='errorDetail') document.getElementById('panel-errorDetail').style.display='block';
-  if(t==='errorSummary') document.getElementById('panel-errorSummary').style.display='block';
-}
-btnDetail.addEventListener('click',()=>switchErrorTabs(btnDetail));
-btnSummaryError.addEventListener('click',()=>switchErrorTabs(btnSummaryError));
-
-// fetch error sheet
+/* Fetch sheet error */
 async function fetchErrorSheet(){
   try{
-    const [header,...rows] = await fetchGviz(URL_ERROR);
-    errorData = [header,...rows];
-    setupErrorDetail();
-    setupErrorSummary();
-  }catch(e){console.error('Lỗi tải sheet error',e);}
+    const res = await fetch(URL_ERROR);
+    const text = await res.text();
+    const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
+    const raw = (json.table.rows||[]).map(r => (r.c||[]).map(c=>c?c.v:''));
+    errorHeader = raw[0].slice(IDX_ERR.loaiStart, IDX_ERR.loaiEnd+1);
+    errorData = raw.slice(1);
+  }catch(e){ console.error(e); alert('Lỗi tải sheet error'); }
 }
 
-// ================= Chi tiết lỗi =================
-function setupErrorDetail(){
-  const panel = document.getElementById('panel-errorDetail');
-  panel.innerHTML = `
-    <div class="controls" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-      <div style="position:relative">
-        <input id="inputSiteError" type="text" placeholder="Tìm mã site..." style="min-width:140px">
-        <div id="suggestionsError" style="display:none;position:absolute;top:38px;left:0;background:#fff;border:1px solid #e8f4ff;border-radius:8px;max-height:200px;overflow:auto;z-index:60"></div>
+/* ================= Tạo tab Chi tiết lỗi ================= */
+function createErrorDetailTab(){
+  const container = document.querySelector('.container .card');
+  const html = `
+  <div id="panel-error-detail" style="margin-top:12px;display:none">
+    <div class="controls">
+      <div>
+        <label>Lỗi:</label>
+        <select id="dropErrorLoi"><option value="">--Chọn lỗi--</option></select>
       </div>
-      <select id="dropHuyenError" multiple size="4" style="min-width:160px"></select>
-      <select id="dropLoiError" style="min-width:200px"></select>
-      <label><input type="checkbox" id="chkVTT" checked> VTT</label>
-      <label><input type="checkbox" id="chkVCC" checked> VCC</label>
-      <label><input type="checkbox" id="chkVCTL" checked> VCTL</label>
-      <button id="btnFilterError" class="btn">Lọc</button>
-      <button id="btnResetError" class="btn ghost">Reset</button>
+      <div>
+        <label>Trạm:</label>
+        <select id="dropErrorSite"><option value="">--Chọn trạm--</option></select>
+      </div>
+      <button id="resetErrorDetail" class="btn ghost">Reset</button>
     </div>
-    <div style="overflow:auto"><div id="tableError"></div></div>
-  `;
+    <div id="errorDetailResult" style="margin-top:12px"></div>
+  </div>`;
+  container.insertAdjacentHTML('beforeend', html);
 
-  fillHuyenError();
-  fillLoiError();
-  setupInputSite();
-
-  document.getElementById('btnFilterError').addEventListener('click', drawErrorRowsFiltered);
-  document.getElementById('btnResetError').addEventListener('click', ()=>{
-    document.getElementById('inputSiteError').value='';
-    Array.from(document.getElementById('dropHuyenError').options).forEach(o=>o.selected=false);
-    document.getElementById('chkVTT').checked=true;
-    document.getElementById('chkVCC').checked=true;
-    document.getElementById('chkVCTL').checked=true;
-    drawErrorRows(errorData.slice(1));
-  });
-
-  drawErrorRows(errorData.slice(1));
-}
-
-function fillHuyenError(){
-  const sel = document.getElementById('dropHuyenError');
-  const setH = new Set();
-  for(let i=1;i<errorData.length;i++){ const h=errorData[i][1]; if(h) setH.add(h);}
-  sel.innerHTML='';
-  Array.from(setH).sort().forEach(v=>{
-    const o = document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
+  const tabs = container.querySelector('.tabs');
+  const btn = document.createElement('button');
+  btn.className='tab-btn'; btn.dataset.tab='error-detail'; btn.textContent='Chi tiết lỗi';
+  tabs.appendChild(btn);
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-chung').style.display='none';
+    document.getElementById('panel-calloff').style.display='none';
+    document.getElementById('panel-tong').style.display='none';
+    document.getElementById('panel-error-detail').style.display='block';
   });
 }
 
-function fillLoiError(){
-  const sel = document.getElementById('dropLoiError');
-  sel.innerHTML='';
-  const header = errorData[0];
-  for(let i=3;i<=16;i++){
-    const o = document.createElement('option');
-    o.value=i;
-    o.textContent = header[i]||`Lỗi ${i-2}`;
-    sel.appendChild(o);
+/* ================= Setup Chi tiết lỗi ================= */
+function setupErrorDetail(){
+  if(!errorData.length) return;
+  const dropLoi = document.getElementById('dropErrorLoi');
+  errorHeader.forEach((h,i)=>{
+    const o=document.createElement('option'); o.value=i; o.textContent=h; dropLoi.appendChild(o);
+  });
+
+  const dropSite = document.getElementById('dropErrorSite');
+  const sites = Array.from(new Set(errorData.map(r=>r[IDX_ERR.site]))).sort();
+  sites.forEach(s=>{
+    const o=document.createElement('option'); o.value=s; o.textContent=s; dropSite.appendChild(o);
+  });
+
+  dropSite.addEventListener('change', drawErrorDetail);
+  dropLoi.addEventListener('change', drawErrorDetail);
+
+  document.getElementById('resetErrorDetail').addEventListener('click', ()=>{
+    dropLoi.value=''; dropSite.value=''; document.getElementById('errorDetailResult').innerHTML='';
+  });
+}
+
+/* ================= Vẽ bảng Chi tiết lỗi ================= */
+function drawErrorDetail(){
+  const site = document.getElementById('dropErrorSite').value;
+  const loiIdx = document.getElementById('dropErrorLoi').value;
+  if(!site) { document.getElementById('errorDetailResult').innerHTML=''; return; }
+
+  const row = errorData.find(r=>r[IDX_ERR.site]===site);
+  if(!row){ document.getElementById('errorDetailResult').innerHTML='Không tìm thấy trạm'; return; }
+
+  const loiList = [];
+  for(let i=IDX_ERR.loaiStart;i<=IDX_ERR.loaiEnd;i++){
+    if(row[i]==1 && (loiIdx==='' || i===parseInt(loiIdx)+IDX_ERR.loaiStart)) loiList.push(errorHeader[i-IDX_ERR.loaiStart]);
   }
+
+  let html='';
+  if(loiList.length){
+    html+=`<p>Các lỗi tồn của trạm <b>${site}</b> gồm:</p>`;
+    html+='<ul>';
+    loiList.forEach(l=>html+=`<li>${l}</li>`);
+    html+='</ul>';
+  } else {
+    html=`<p>Trạm <b>${site}</b> không có lỗi tồn nào.</p>`;
+  }
+
+  document.getElementById('errorDetailResult').innerHTML=html;
 }
 
-function setupInputSite(){
-  const inputSite = document.getElementById('inputSiteError');
-  const box = document.getElementById('suggestionsError');
-  inputSite.addEventListener('input',(e)=>{
-    const q = e.target.value.trim().toLowerCase();
-    box.innerHTML='';
-    if(!q){box.style.display='none'; return;}
-    const found = new Set();
-    for(let i=1;i<errorData.length;i++){
-      const site = errorData[i][0];
-      if(site && site.toLowerCase().includes(q)) found.add(site);
-      if(found.size>=30) break;
-    }
-    Array.from(found).forEach(s=>{
-      const div = document.createElement('div');
-      div.textContent=s;
-      div.onclick=()=>{ inputSite.value=''; box.innerHTML=''; box.style.display='none'; drawErrorRows([errorData[0], ...errorData.slice(1).filter(r=>r[0]===s)]);}
-      box.appendChild(div);
-    });
-    box.style.display = found.size? 'block':'none';
-  });
-}
-
-function drawErrorRowsFiltered(){
-  const selectedHuyen = Array.from(document.getElementById('dropHuyenError').selectedOptions).map(o=>o.value);
-  const chkVTT = document.getElementById('chkVTT').checked;
-  const chkVCC = document.getElementById('chkVCC').checked;
-  const chkVCTL = document.getElementById('chkVCTL').checked;
-  const loiIdx = parseInt(document.getElementById('dropLoiError').value);
-  let rows = errorData.slice(1);
-  if(selectedHuyen.length>0) rows = rows.filter(r=>selectedHuyen.includes(r[1]));
-  drawErrorRows(rows, loiIdx, chkVTT, chkVCC, chkVCTL);
-}
-
-function drawErrorRows(rows, loiIdx=null, vtt=true, vcc=true, vctl=true){
-  const header = errorData[0];
-  let html='<table style="border-collapse:collapse;width:100%;font-size:13px"><thead><tr>';
-  header.forEach((h,i)=>{
-    const w = (i>=3 && i<=16)?'80px':'auto';
-    html+=`<th style="border:1px solid #ccc;padding:4px;word-wrap:break-word;width:${w};white-space:normal">${esc(h||'')}</th>`;
-  });
-  html+='</tr></thead><tbody>';
-  rows.forEach((r,idx)=>{
-    const bg = idx%2===0?'#fdfdfd':'#f0faff';
-    html+=`<tr style="background:${bg}">`;
-    for(let i=0;i<r.length;i++){
-      if(i>=3 && i<=16){
-        let show = false;
-        if(i<=5 && vtt) show=true;
-        if(i>=6 && i<=14 && vcc) show=true;
-        if(i>=15 && i<=16 && vctl) show=true;
-        html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${show?r[i]||'':''}</td>`;
-      } else html+=`<td style="border:1px solid #ccc;padding:4px">${esc(r[i]||'')}</td>`;
-    }
-    html+='</tr>';
-  });
-  html+='</tbody></table>';
-  document.getElementById('tableError').innerHTML=html;
-}
-
-// ================= Tổng hợp lỗi =================
-function setupErrorSummary(){
-  const panel = document.getElementById('panel-errorSummary');
-  panel.innerHTML=`
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-      <select id="dropHuyenSummary" multiple size="4" style="min-width:160px"></select>
-      <label><input type="checkbox" id="chkVTTSum" checked> VTT</label>
-      <label><input type="checkbox" id="chkVCCSum" checked> VCC</label>
-      <label><input type="checkbox" id="chkVCTLSum" checked> VCTL</label>
-      <button id="btnSummaryErrorGo" class="btn">Thống kê</button>
+/* ================= Tạo tab Tổng hợp lỗi ================= */
+function createErrorSummaryTab(){
+  const container = document.querySelector('.container .card');
+  const html = `
+  <div id="panel-error-summary" style="margin-top:12px;display:none">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button id="btnErrorSummary" class="btn">Tổng hợp lỗi</button>
     </div>
-    <div style="overflow:auto"><div id="tableSummaryError"></div></div>
-  `;
-  const selH = document.getElementById('dropHuyenSummary');
-  const setH = new Set();
-  for(let i=1;i<errorData.length;i++){ const h=errorData[i][1]; if(h) setH.add(h);}
-  Array.from(setH).sort().forEach(v=>{
-    const o = document.createElement('option'); o.value=v; o.textContent=v; selH.appendChild(o);
+    <div id="errorSummaryArea" style="margin-top:12px;overflow:auto"></div>
+  </div>`;
+  container.insertAdjacentHTML('beforeend', html);
+
+  const tabs = container.querySelector('.tabs');
+  const btn = document.createElement('button');
+  btn.className='tab-btn'; btn.dataset.tab='error-summary'; btn.textContent='Tổng hợp lỗi';
+  tabs.appendChild(btn);
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-chung').style.display='none';
+    document.getElementById('panel-calloff').style.display='none';
+    document.getElementById('panel-tong').style.display='none';
+    document.getElementById('panel-error-detail').style.display='none';
+    document.getElementById('panel-error-summary').style.display='block';
   });
-  document.getElementById('btnSummaryErrorGo').addEventListener('click', drawErrorSummary);
 }
 
+/* ================= Vẽ bảng Tổng hợp lỗi ================= */
 function drawErrorSummary(){
-  const selectedHuyen = Array.from(document.getElementById('dropHuyenSummary').selectedOptions).map(o=>o.value);
-  const vtt = document.getElementById('chkVTTSum').checked;
-  const vcc = document.getElementById('chkVCCSum').checked;
-  const vctl = document.getElementById('chkVCTLSum').checked;
-  const rows = errorData.slice(1).filter(r=>selectedHuyen.length===0 || selectedHuyen.includes(r[1]));
-  const header = errorData[0];
-  const loiCols = [];
-  for(let i=3;i<=16;i++){
-    if(i<=5 && vtt) loiCols.push(i);
-    if(i>=6 && i<=14 && vcc) loiCols.push(i);
-    if(i>=15 && i<=16 && vctl) loiCols.push(i);
-  }
-  let html='<table style="border-collapse:collapse;width:100%;font-size:13px"><thead><tr><th style="border:1px solid #ccc;padding:4px">Huyện</th><th style="border:1px solid #ccc;padding:4px">Site</th>';
-  loiCols.forEach(i=>html+=`<th style="border:1px solid #ccc;width:80px;white-space:normal;word-wrap:break-word;padding:4px">${esc(header[i])}</th>`);
-  html+='</tr></thead><tbody>';
-  rows.forEach((r,idx)=>{
-    const bg = idx%2===0?'#fdfdfd':'#f0faff';
-    html+=`<tr style="background:${bg}"><td style="border:1px solid #ccc;padding:4px">${esc(r[1])}</td><td style="border:1px solid #ccc;padding:4px">${esc(r[0])}</td>`;
-    loiCols.forEach(i=>html+=`<td style="border:1px solid #ccc;padding:4px;text-align:center">${r[i]||''}</td>`);
-    html+='</tr>';
+  const groups = {}; // {huyen:{total:n, loi:n}}
+  errorData.forEach(r=>{
+    const h = r[IDX_ERR.huyen]||'(Không xác định)';
+    if(!groups[h]) groups[h]={total:0,loi:0};
+    groups[h].total++;
+    const loi = r.slice(IDX_ERR.loaiStart, IDX_ERR.loaiEnd+1).some(v=>v==1);
+    if(loi) groups[h].loi++;
+  });
+
+  let html='<table style="border-collapse:collapse;width:auto"><thead><tr><th style="border:1px solid #aaa;padding:4px">Huyện</th><th style="border:1px solid #aaa;padding:4px">Tổng số trạm</th><th style="border:1px solid #aaa;padding:4px">Số trạm tồn</th><th style="border:1px solid #aaa;padding:4px">% tồn</th></tr></thead><tbody>';
+  Object.entries(groups).forEach(([h,v],idx)=>{
+    const bg = idx%2===0?'#f9f9f9':'#fff';
+    const pct = v.total?v.loi*100/v.total:0;
+    html+=`<tr style="background:${bg}"><td style="border:1px solid #aaa;padding:4px">${h}</td><td style="border:1px solid #aaa;padding:4px;text-align:center">${v.total}</td><td style="border:1px solid #aaa;padding:4px;text-align:center">${v.loi}</td><td style="border:1px solid #aaa;padding:4px;text-align:center">${pct.toFixed(1)}%</td></tr>`;
   });
   html+='</tbody></table>';
-  document.getElementById('tableSummaryError').innerHTML=html;
+  document.getElementById('errorSummaryArea').innerHTML=html;
 }
 
-window.addEventListener('load', fetchErrorSheet);
-</script>
+/* ================= INIT ================= */
+window.addEventListener('load', async ()=>{
+  await fetchErrorSheet();
+  createErrorDetailTab(); setupErrorDetail();
+  createErrorSummaryTab();
+  document.getElementById('btnErrorSummary').addEventListener('click', drawErrorSummary);
+});
 </body>
 </html>
