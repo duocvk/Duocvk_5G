@@ -596,7 +596,7 @@ function showErrors(tram){
 </script>
   
 
- <!-- Thêm trực tiếp trong div.tabs -->
+<!-- Trong div.tabs: chèn trực tiếp cùng các tab khác -->
 <button class="tab-btn" data-tab="loiChiTiet">Lỗi chi tiết</button>
 
 <!-- Panel Lỗi chi tiết -->
@@ -614,6 +614,7 @@ function showErrors(tram){
 
 <script>
 async function setupLoiChiTietTab() {
+  // Fetch sheet error khi load
   if(!errorData || errorData.length===0){
     try{
       const res = await fetch(URL_ERROR);
@@ -670,23 +671,44 @@ async function setupLoiChiTietTab() {
       return;
     }
 
-    // Tạo bảng tổng hợp theo huyện
+    // ===== Bảng tổng hợp theo huyện =====
     const summaryMap = new Map();
     rows.forEach(r=>{
       const huyen = r[colHuyenIdx] || '(Không xác định)';
       summaryMap.set(huyen, (summaryMap.get(huyen)||0)+1);
     });
-    let sumHtml = '<table style="width:auto;border:1px solid #ccc;border-collapse:collapse;"><thead><tr><th>Huyện</th><th>Số lỗi</th></tr></thead><tbody>';
-    summaryMap.forEach((count,h)=>{ sumHtml += `<tr><td>${esc(h)}</td><td style="text-align:center">${count}</td></tr>`; });
+
+    // Chia bảng 2 cột nếu >3 huyện
+    const entries = Array.from(summaryMap.entries());
+    let sumHtml = '<table style="border-collapse:collapse;width:auto;"><thead><tr style="background:#0a66c2;color:#fff;"><th>Huyện</th><th>Số lỗi</th>';
+    if(entries.length>3){ sumHtml += '<th>Huyện</th><th>Số lỗi</th>'; }
+    sumHtml += '</tr></thead><tbody>';
+    for(let i=0;i<entries.length;i+=2){
+      const first = entries[i];
+      const second = entries[i+1];
+      sumHtml += '<tr>';
+      sumHtml += `<td style="padding:4px 8px;border:1px solid #ccc">${esc(first[0])}</td><td style="padding:4px 8px;border:1px solid #ccc;text-align:center">${first[1]}</td>`;
+      if(second){ 
+        sumHtml += `<td style="padding:4px 8px;border:1px solid #ccc">${esc(second[0])}</td><td style="padding:4px 8px;border:1px solid #ccc;text-align:center">${second[1]}</td>`;
+      } else if(entries.length>3){ 
+        sumHtml += '<td></td><td></td>'; 
+      }
+      sumHtml += '</tr>';
+    }
     sumHtml += '</tbody></table>';
     summary.innerHTML = sumHtml;
 
-    // Tạo bảng chi tiết
-    let html = `<p>Lỗi: <b>${selectedHeader}</b></p><table><thead><tr>`;
-    colHeader.forEach(h=>html+=`<th>${esc(h||'')}</th>`);
+    // ===== Bảng chi tiết 3 cột =====
+    let html = `<p>Lỗi: <b>${selectedHeader}</b></p><table style="border-collapse:collapse;width:auto;"><thead><tr style="background:#0a66c2;color:#fff;">`;
+    colHeader.forEach(h=>html+=`<th style="padding:4px 6px">${esc(h||'')}</th>`);
     html += `</tr></thead><tbody>`;
-    rows.forEach(r=>{
-      html += `<tr><td>${esc(r[0]||'')}</td><td>${esc(r[1]||'')}</td><td>${esc(r[2]||'')}</td></tr>`;
+    rows.forEach((r,i)=>{
+      const bg = i%2===0?'#f0f8ff':'#ffffff';
+      html += `<tr style="background:${bg}">`;
+      html += `<td style="padding:3px 6px">${esc(r[0]||'')}</td>`;
+      html += `<td style="padding:3px 6px">${esc(r[1]||'')}</td>`;
+      html += `<td style="padding:3px 6px">${esc(r[2]||'')}</td>`;
+      html += `</tr>`;
     });
     html += '</tbody></table>';
     table.innerHTML = html;
