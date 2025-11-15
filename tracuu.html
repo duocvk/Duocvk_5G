@@ -450,186 +450,218 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
- /* ==========================
-   CONFIG SHEET ERROR
-========================== */
-const SHEET_ERROR_ID =
-  "1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8";
+ <script>
+// ====================== CONFIG GOOGLE SHEET ==========================
+const SHEET_ID = "1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8";
+const ERROR_SHEET_NAME = "error";
+const API = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${ERROR_SHEET_NAME}`;
 
-const URL_ERROR =
-  `https://docs.google.com/spreadsheets/d/${SHEET_ERROR_ID}/gviz/tq?tqx=out:json&sheet=error`;
-
-const IDX_ERROR = {
-  site: 0,
-  huyen: 1,
-  g5: 2,
-  start: 3,   // cột D = index 3
-  end: 16     // cột Q = index 16
-};
-
-let errorData = [];   // dữ liệu từ dòng 3 trở đi
-let headerLoi = [];   // tiêu đề lỗi D1 → Q1
-
-
-/* ==========================
-   FETCH SHEET ERROR
-========================== */
-async function fetchErrorSheet() {
-  try {
-    const res = await fetch(URL_ERROR);
+// ====================== LOAD DATA FROM SHEET =========================
+async function loadErrorSheet() {
+    const res = await fetch(API);
     const text = await res.text();
-    const json = JSON.parse(
-      text.replace(/^[^\(]*\(/, "").replace(/\);\s*$/, "")
-    );
+    const json = JSON.parse(text.substring(47, text.length - 2));
 
-    const raw = (json.table.rows || []).map(r =>
-      (r.c || []).map(c => c ? c.v : "")
-    );
+    const rows = json.table.rows.map(r => r.c.map(c => c ? c.v : ""));
 
-    if (raw.length < 3) {
-      alert("Sheet error thiếu dữ liệu");
-      return;
+    // Row1 = header
+    const header = rows[0];
+
+    // Row2 = blank → skip
+    const data = rows.slice(2); // row index 2 = dòng 3
+
+    return { header, data };
+}
+
+// ====================== AUTOCOMPLETE TÊN LỖI (D1→Q1) =================
+async function setupErrorAutocomplete() {
+    const { header } = await loadErrorSheet();
+    const errorHeaders = header.slice(3, 17); // D→Q
+
+    const input = document.getElementById("input-error");
+    const suggest = document.getElementById("suggest-error");
+
+    input.addEventListener("input", () => {
+        const v = input.value.trim().toLowerCase();
+        suggest.innerHTML = "";
+        if (v === "") return;
+
+        const matched = errorHeaders.filter(h => h.toLowerCase().includes(v));
+
+        matched.forEach(h => {
+            const item = document.createElement("div");
+            item.className = "suggest-item";
+            item.textContent = h;
+            item.onclick = () => {
+                input.value = h;
+                suggest.innerHTML = "";
+                showSitesByError(h);  // gọi hàm xử lý lỗi
+            };
+            suggest.appendChild(item);
+        });
+    });
+}
+
+// ====================== AUTOCOMPLETE SITE ============================
+async function setupSiteAutocomplete() {
+    const { data } = await loadErrorSheet();
+    const input = document.getElementById("input-site");
+    const suggest = document.getElementById("suggest-site");
+
+    input.addEventListener("input", () => {
+        const v = input.value.trim().toLowerCase();
+        suggest.innerHTML = "";
+        if (v === "") return;
+
+        const matched = data.filter(r => r[0].toLowerCase().includes(v));
+
+        matched.forEach(r => {
+            const item = document.createElement("div");
+            item.className = "suggest-item";
+            item.textContent = r[0];
+            item.onclick = () => {
+                input.value = "";
+                suggest.innerHTML = "";
+                showErrorsForSite(r[0]);
+            };
+            suggest.appendChild(item);
+        });
+    });
+}
+
+// ====================== HIỂN THỊ LỖI THEO SITE =======================
+async function showErrorsForSite(site) {
+    const { header, data } = await loadErrorSheet();
+    const rows = data.filter(r => r[0] === site);
+
+    const out = document.getElementById("result-site");
+    out.innerHTML = "";
+
+    if (rows.length === 0) {
+        out.innerHTML = `<div>Không tìm thấy trạm ${site}</div>`;
+        return;
     }
 
-    // Lấy tiêu đề lỗi từ dòng 1 → cột D đến Q
-    headerLoi = raw[0].slice(IDX_ERROR.start, IDX_ERROR.end + 1);
+    const row = rows[0];
 
-    // Dữ liệu chính xác từ dòng 3 trở đi
-    errorData = raw.slice(2);
-
-    renderErrorSuggestions();
-  } catch (err) {
-    console.error(err);
-    alert("Không tải được dữ liệu sheet ERROR");
-  }
-}
-
-
-/* ===================================================
-   PHẦN 1 — GỢI Ý SITE (INPUT SITES)
-=================================================== */
-function renderErrorSuggestions() {
-  const list = document.getElementById("listSiteError");
-  list.innerHTML = "";
-
-  const sites = [...new Set(errorData.map(r => r[IDX_ERROR.site]))];
-
-  sites.forEach(site => {
-    if (site && site.trim() !== "") {
-      const opt = document.createElement("option");
-      opt.value = site;
-      list.appendChild(opt);
+    let errList = [];
+    for (let i = 3; i <= 16; i++) {
+        if (row[i] === 1 || row[i] === "1")
+            errList.push(header[i]);
     }
-  });
+
+    if (errList.length === 0) {
+        out.innerHTML = `<b>Trạm ${site} không có lỗi tồn nào.</b>`;
+        return;
+    }
+
+    out.innerHTML = `<b>Các lỗi tồn của trạm ${site} gồm:</b><br><br>`;
+    errList.forEach(e => {
+        out.innerHTML += `• ${e}<br>`;
+    });
 }
 
+// ====================== XO LÝ LỖI → LIỆT KÊ SITE ======================
+async function showSitesByError(errorName) {
+    const { header, data } = await loadErrorSheet();
 
-/* ===================================================
-   PHẦN 2 — TRA CỨU THEO SITE
-=================================================== */
-function searchSiteError() {
-  const site = document.getElementById("inputSiteError").value.trim();
-  const box = document.getElementById("dataSiteError");
+    const errIndex = header.indexOf(errorName);
+    const out = document.getElementById("result-error");
+    out.innerHTML = "";
 
-  if (!site) return;
+    if (errIndex === -1) {
+        out.innerHTML = "Lỗi không tồn tại.";
+        return;
+    }
 
-  const rows = errorData.filter(r => r[IDX_ERROR.site] == site);
+    const list = data.filter(r => r[errIndex] === 1 || r[errIndex] === "1");
 
-  if (rows.length === 0) {
-    box.innerHTML = `<div class="no-data">Không có dữ liệu</div>`;
-    return;
-  }
+    if (list.length === 0) {
+        out.innerHTML = `Không có trạm nào tồn lỗi: <b>${errorName}</b>`;
+        return;
+    }
 
-  let html = `
-    <table class="tb">
-      <thead>
-        <tr>
-          <th>Site</th>
-          <th>Huyện</th>
-          <th>5G</th>
-          ${headerLoi.map(h => `<th>${h}</th>`).join("")}
-        </tr>
-      </thead>
-      <tbody>
-  `;
-
-  rows.forEach(r => {
-    html += `<tr>
-      <td>${r[IDX_ERROR.site]}</td>
-      <td>${r[IDX_ERROR.huyen]}</td>
-      <td>${r[IDX_ERROR.g5]}</td>
-      ${
-        r.slice(IDX_ERROR.start, IDX_ERROR.end + 1)
-         .map(v => `<td>${v}</td>`).join("")
-      }
-    </tr>`;
-  });
-
-  html += "</tbody></table>";
-  box.innerHTML = html;
-}
-
-
-/* ===================================================
-   PHẦN 3 — TỔNG HỢP THEO LỖI (D1 → Q1)
-=================================================== */
-function searchLoiError() {
-  const keyword = document
-    .getElementById("inputLoiError")
-    .value.trim()
-    .toLowerCase();
-
-  const box = document.getElementById("dataLoiError");
-  if (!keyword) return;
-
-  // tìm đúng cột lỗi
-  const idx = headerLoi.findIndex(
-    h => h.toLowerCase().includes(keyword)
-  );
-
-  if (idx === -1) {
-    box.innerHTML = `<div class="no-data">Không tìm thấy lỗi</div>`;
-    return;
-  }
-
-  const col = IDX_ERROR.start + idx;
-
-  let rows = errorData.filter(r => r[col] && r[col] !== "");
-
-  // Tổng số lỗi
-  const total = rows.length;
-
-  let html = `
-    <div class="sum-title">
-      <b>${headerLoi[idx]}</b> — Tổng: <b>${total}</b>
-    </div>
-
-    <table class="tb">
-      <thead>
-        <tr>
-          <th>Site</th>
-          <th>Huyện</th>
-          <th>5G</th>
-          <th>${headerLoi[idx]}</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
-
-  rows.forEach(r => {
-    html += `
-      <tr>
-        <td>${r[IDX_ERROR.site]}</td>
-        <td>${r[IDX_ERROR.huyen]}</td>
-        <td>${r[IDX_ERROR.g5]}</td>
-        <td>${r[col]}</td>
-      </tr>
+    let html = `
+        <table border="1" style="border-collapse:collapse;width:100%">
+            <tr style="background:#ddd;font-weight:bold">
+                <td>Site</td><td>Huyện</td><td>5G</td>
+            </tr>
     `;
-  });
 
-  html += "</tbody></table>";
-  box.innerHTML = html;
+    list.forEach(r => {
+        html += `<tr>
+            <td>${r[0]}</td>
+            <td>${r[1]}</td>
+            <td>${r[2]}</td>
+        </tr>`;
+    });
+
+    html += "</table>";
+    out.innerHTML = html;
 }
+
+// ====================== TỔNG HỢP HUYỆN ===============================
+async function buildSummary() {
+    const { data } = await loadErrorSheet();
+
+    let map = {};
+
+    data.forEach(r => {
+        const h = r[1];
+        if (!map[h]) map[h] = { total: 0, ton: 0 };
+
+        map[h].total++;
+
+        // có lỗi nếu D→Q có ô = 1
+        const hasError = r.slice(3, 17).some(v => v === 1 || v === "1");
+        if (hasError) map[h].ton++;
+    });
+
+    let html = `
+        <table border="1" style="border-collapse:collapse;width:100%">
+            <tr style="background:#ddd;font-weight:bold">
+                <td>Huyện</td><td>Tổng trạm</td><td>Trạm tồn</td><td>Tỉ lệ</td>
+            </tr>
+    `;
+
+    Object.keys(map).forEach(h => {
+        const o = map[h];
+        const rate = o.total === 0 ? "0%" : ((o.ton / o.total) * 100).toFixed(1) + "%";
+
+        html += `
+            <tr>
+                <td>${h}</td>
+                <td>${o.total}</td>
+                <td>${o.ton}</td>
+                <td>${rate}</td>
+            </tr>
+        `;
+    });
+
+    html += "</table>";
+
+    document.getElementById("result-summary").innerHTML = html;
+}
+
+// ====================== KHỞI CHẠY ===============================
+window.onload = () => {
+    setupSiteAutocomplete();
+    setupErrorAutocomplete();
+    buildSummary();
+};
+</script>
+
+<style>
+.suggest-item {
+    padding: 4px;
+    background: #f0f0f0;
+    cursor: pointer;
+    border-bottom: 1px solid #ccc;
+}
+.suggest-item:hover {
+    background: #dcdcdc;
+}
+</style>
 </script>
 </body>
 </html>
