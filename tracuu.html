@@ -452,19 +452,7 @@ function toggleDetail(encKey, mode){
 </script>
 
 
-  <!-- ================= Tab Error ================= -->
-<button class="tab-btn" data-tab="error">Error</button>
-
-<div id="panel-error" style="margin-top:12px;display:none">
-  <div class="controls">
-    <div style="position:relative; flex-grow:1;">
-      <input id="inputError" type="text" placeholder="Nhập mã trạm cần tìm (ví dụ: QNM0010)">
-    </div>
-    <button id="btnErrorReset" class="btn ghost">Reset</button>
-  </div>
-  <div id="errorResult" style="margin-top:12px"></div>
-</div>
-
+ <!-- ================= Tab Error ================= -->
 <script>
 /* ================= Config cho Error ================= */
 const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
@@ -479,22 +467,67 @@ async function fetchErrorSheet(){
   }
 }
 
-/* ================= Setup tab Error ================= */
-function setupErrorTab(){
-  const input = document.getElementById('inputError');
-  const result = document.getElementById('errorResult');
+/* ================= Thêm tab Error vào header ================= */
+window.addEventListener('load', async ()=>{
+  // fetch sheet error
+  await fetchErrorSheet();
 
-  input.addEventListener('input', (e)=>{
-    const tram = e.target.value.trim();
-    if(tram === '') { result.innerHTML=''; return; }
-    showErrors(tram);
-  });
+  // tạo nút tab Error và panel
+  const tabContainer = document.querySelector('.tabs');
+  if(tabContainer){
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn';
+    btn.setAttribute('data-tab','error');
+    btn.textContent = 'Error';
+    tabContainer.appendChild(btn);
 
-  document.getElementById('btnErrorReset').addEventListener('click', ()=>{
-    input.value = '';
-    result.innerHTML = '';
-  });
-}
+    const container = document.querySelector('.container .card');
+
+    const panel = document.createElement('div');
+    panel.id = 'panel-error';
+    panel.style.display = 'none';
+    panel.style.marginTop = '12px';
+    panel.innerHTML = `
+      <div class="controls">
+        <input id="inputError" type="text" placeholder="Nhập mã trạm cần tìm (ví dụ: QNM0010)" style="flex-grow:1;min-width:220px;padding:10px;border-radius:8px;border:1px solid #e8f4ff;background:#fbfdff;">
+        <button id="btnErrorReset" class="btn ghost">Reset</button>
+      </div>
+      <div id="errorResult" style="margin-top:12px"></div>
+    `;
+    container.appendChild(panel);
+
+    // xử lý click tab
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // ẩn các panel khác
+      document.getElementById('panel-chung').style.display = 'none';
+      document.getElementById('panel-calloff').style.display = 'none';
+      document.getElementById('panel-tong').style.display = 'none';
+      document.getElementById('panel-error').style.display = 'block';
+
+      // clear result khi mở tab
+      document.getElementById('errorResult').innerHTML = '';
+      document.getElementById('inputError').value = '';
+    });
+
+    // setup input + reset
+    const input = document.getElementById('inputError');
+    const result = document.getElementById('errorResult');
+
+    input.addEventListener('input', ()=>{
+      const tram = input.value.trim();
+      if(tram === '') { result.innerHTML=''; return; }
+      showErrors(tram);
+    });
+
+    document.getElementById('btnErrorReset').addEventListener('click', ()=>{
+      input.value = '';
+      result.innerHTML = '';
+    });
+  }
+});
 
 /* ================= Hàm showErrors ================= */
 function showErrors(tram){
@@ -503,7 +536,7 @@ function showErrors(tram){
     return;
   }
 
-  // Tìm các dòng trùng mã trạm
+  // Tìm dòng trùng mã trạm
   const rows = errorData.slice(1).filter(r => String(r[0]||'') === tram);
   const result = document.getElementById('errorResult');
 
@@ -519,7 +552,7 @@ function showErrors(tram){
     for(let col=3; col<=20; col++){ // D → U
       const cell = r[col];
       if(cell && (String(cell).toLowerCase() === 'e')){
-        messages.push(esc(headerRow[col]||`Cột ${col+1}`));
+        messages.push(headerRow[col] || `Cột ${col+1}`);
       }
     }
   });
@@ -533,12 +566,6 @@ function showErrors(tram){
     result.innerHTML = `<div>Trạm ${tram} không tồn lỗi nào!</div>`;
   }
 }
-
-/* ================= Khởi tạo Error tab ================= */
-window.addEventListener('load', async ()=>{
-  await fetchErrorSheet();
-  setupErrorTab();
-});
 </script>
   
   
