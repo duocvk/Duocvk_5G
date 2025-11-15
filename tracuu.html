@@ -450,5 +450,208 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
+  <!-- ================= BỔ SUNG: Chi tiết lỗi & Tổng hợp lỗi ================= -->
+<script>
+const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
+const IDX_ERROR = { site:0, huyen:1, loiStart:3 }; // D=3 → Q=16
+
+let errorData = [];
+
+/* ================= Fetch error sheet ================= */
+async function fetchError(){
+  try{
+    const res = await fetch(URL_ERROR);
+    const text = await res.text();
+    const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
+    const raw = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
+    errorData = raw;
+    setupErrorDetail();
+    setupErrorSummary();
+  }catch(err){
+    console.error('Lỗi tải sheet Error:', err);
+  }
+}
+
+/* ================= Tabs ================= */
+const tabErrorDetailBtn = document.createElement('button');
+tabErrorDetailBtn.className = 'tab-btn';
+tabErrorDetailBtn.setAttribute('data-tab','error-detail');
+tabErrorDetailBtn.textContent = 'Chi tiết lỗi';
+const tabErrorSummaryBtn = document.createElement('button');
+tabErrorSummaryBtn.className = 'tab-btn';
+tabErrorSummaryBtn.setAttribute('data-tab','error-summary');
+tabErrorSummaryBtn.textContent = 'Tổng hợp lỗi';
+document.querySelector('.tabs').appendChild(tabErrorDetailBtn);
+document.querySelector('.tabs').appendChild(tabErrorSummaryBtn);
+
+tabErrorDetailBtn.addEventListener('click',()=>showErrorTab('error-detail'));
+tabErrorSummaryBtn.addEventListener('click',()=>showErrorTab('error-summary'));
+
+function showErrorTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById('panel-chung').style.display='none';
+  document.getElementById('panel-calloff').style.display='none';
+  document.getElementById('panel-tong').style.display='none';
+  document.getElementById('panel-error-detail').style.display=tab==='error-detail'?'block':'none';
+  document.getElementById('panel-error-summary').style.display=tab==='error-summary'?'block':'none';
+  hideSuggestions(); hideSuggestionsCalloff();
+}
+
+/* ================= CHI TIẾT LỖI ================= */
+function setupErrorDetail(){
+  const header = errorData[0] || [];
+  const loiHeaders = header.slice(IDX_ERROR.loiStart, IDX_ERROR.loiStart+14); // D→Q
+  const dropLoi = document.getElementById('dropLoiError');
+  dropLoi.innerHTML = '<option value="">Tất cả lỗi</option>';
+  loiHeaders.forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; dropLoi.appendChild(o); });
+
+  // Lấy các huyện
+  const huyenSet = new Set();
+  for(let i=1;i<errorData.length;i++){
+    if(errorData[i][IDX_ERROR.huyen]) huyenSet.add(errorData[i][IDX_ERROR.huyen]);
+  }
+  const dropHuyen = document.getElementById('dropHuyenError');
+  dropHuyen.innerHTML='';
+  Array.from(huyenSet).sort().forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; dropHuyen.appendChild(o); });
+
+  // Input site autocomplete
+  const input = document.getElementById('inputSiteError');
+  const box = document.getElementById('suggestionsSiteError');
+  input.addEventListener('input',(e)=>{
+    const q = e.target.value.trim().toLowerCase();
+    box.innerHTML='';
+    if(!q){ box.style.display='none'; return; }
+    const found = new Set();
+    for(let i=1;i<errorData.length;i++){
+      const v = errorData[i][IDX_ERROR.site];
+      if(v && String(v).toLowerCase().includes(q)) found.add(v);
+      if(found.size>=30) break;
+    }
+    Array.from(found).forEach(s=>{
+      const d=document.createElement('div'); d.textContent=s;
+      d.onclick = ()=>{
+        input.value=''; box.style.display='none';
+        drawErrorDetail([s], dropHuyen.value ? [dropHuyen.value] : null, dropLoi.value || null);
+      };
+      box.appendChild(d);
+    });
+    box.style.display = found.size?'block':'none';
+  });
+
+  dropHuyen.addEventListener('change',()=>drawErrorDetail(null, Array.from(dropHuyen.selectedOptions).map(o=>o.value), dropLoi.value || null));
+  dropLoi.addEventListener('change',()=>drawErrorDetail(null, Array.from(dropHuyen.selectedOptions).map(o=>o.value), dropLoi.value || null));
+
+  document.getElementById('resetErrorDetail').addEventListener('click',()=>{
+    input.value=''; dropHuyen.value=''; dropLoi.value='';
+    drawErrorDetail();
+    box.innerHTML=''; box.style.display='none';
+  });
+
+  drawErrorDetail();
+}
+
+function drawErrorDetail(sites=null,huyens=null,loi=null){
+  let rows = errorData.slice(1);
+  if(sites) rows = rows.filter(r=>sites.includes(r[IDX_ERROR.site]));
+  if(huyens && huyens.length) rows = rows.filter(r=>huyens.includes(r[IDX_ERROR.huyen]));
+  const header = errorData[0].slice(IDX_ERROR.loiStart, IDX_ERROR.loiStart+14);
+  if(loi) rows = rows.filter(r=>{
+    const idx = header.indexOf(loi);
+    return idx>=0 && r[IDX_ERROR.loiStart+idx]==1;
+  });
+
+  let html = '<table><thead><tr><th>Site</th><th>Huyện</th>';
+  header.forEach(h=>html+=`<th>${esc(h)}</th>`);
+  html+='</tr></thead><tbody>';
+  rows.forEach(r=>{
+    html+=`<tr><td>${esc(r[IDX_ERROR.site])}</td><td>${esc(r[IDX_ERROR.huyen])}</td>`;
+    for(let i=0;i<header.length;i++){
+      const val = r[IDX_ERROR.loiStart+i]; html+=`<td>${val==1?'✔':''}</td>`;
+    }
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  document.getElementById('tableErrorDetail').innerHTML=html;
+}
+
+/* ================= TỔNG HỢP LỖI ================= */
+function setupErrorSummary(){
+  const huyenSet = new Set();
+  for(let i=1;i<errorData.length;i++){
+    if(errorData[i][IDX_ERROR.huyen]) huyenSet.add(errorData[i][IDX_ERROR.huyen]);
+  }
+  const dropHuyen = document.getElementById('dropHuyenSummary');
+  dropHuyen.innerHTML='';
+  Array.from(huyenSet).sort().forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; dropHuyen.appendChild(o); });
+
+  document.getElementById('btnErrorSummary').addEventListener('click', drawErrorSummary);
+}
+
+function drawErrorSummary(){
+  const checkedUnits = Array.from(document.querySelectorAll('.unitChk:checked')).map(c=>c.value);
+  if(!checkedUnits.length) { document.getElementById('tableErrorSummary').innerHTML='<p>Chọn ít nhất 1 đơn vị</p>'; return; }
+  const huyens = Array.from(document.getElementById('dropHuyenSummary').selectedOptions).map(o=>o.value);
+  let rows = errorData.slice(1);
+  if(huyens.length) rows = rows.filter(r=>huyens.includes(r[IDX_ERROR.huyen]));
+
+  const header = errorData[0].slice(IDX_ERROR.loiStart, IDX_ERROR.loiStart+14);
+  // Map đơn vị
+  const unitCols = { VTT:[0,1,2], VCC:[3,4,5,6,7,8,9,10,11], VCTL:[12,13] }; // D→Q
+  let result = {}; // { huyện: { lỗi: count } }
+  rows.forEach(r=>{
+    const huyen = r[IDX_ERROR.huyen]||'(Không xác định)';
+    if(!result[huyen]) result[huyen]={};
+    header.forEach((l,idx)=>{
+      let val=0;
+      checkedUnits.forEach(u=>{
+        const cols = unitCols[u];
+        if(cols.includes(idx) && r[IDX_ERROR.loiStart+idx]==1) val=1;
+      });
+      if(val) result[huyen][l] = (result[huyen][l]||0)+1;
+    });
+  });
+
+  // Render table
+  let html='<table><thead><tr><th>Huyện</th>';
+  header.forEach(l=>html+=`<th>${esc(l)}</th>`);
+  html+='</tr></thead><tbody>';
+  Object.entries(result).forEach(([h,r])=>{
+    html+=`<tr><td>${esc(h)}</td>`;
+    header.forEach(l=>html+=`<td>${r[l]||0}</td>`);
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  document.getElementById('tableErrorSummary').innerHTML=html;
+}
+
+/* ================= Start fetch ================= */
+window.addEventListener('load',fetchError);
+</script>
+
+<!-- Panels HTML -->
+<div id="panel-error-detail" style="display:none; margin-top:12px" class="card">
+  <div class="controls">
+    <div style="position:relative">
+      <input id="inputSiteError" type="text" placeholder="Nhập mã site...">
+      <div id="suggestionsSiteError" style="display:none"></div>
+    </div>
+    <select id="dropHuyenError" multiple style="min-width:200px"></select>
+    <select id="dropLoiError" style="min-width:200px"></select>
+    <button id="resetErrorDetail" class="btn ghost">Reset</button>
+  </div>
+  <div id="tableErrorDetail"></div>
+</div>
+
+<div id="panel-error-summary" style="display:none; margin-top:12px" class="card">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <label><input type="checkbox" class="unitChk" value="VTT"> VTT</label>
+    <label><input type="checkbox" class="unitChk" value="VCC"> VCC</label>
+    <label><input type="checkbox" class="unitChk" value="VCTL"> VCTL</label>
+    <select id="dropHuyenSummary" multiple style="min-width:200px"></select>
+    <button id="btnErrorSummary" class="btn">Thống kê</button>
+  </div>
+  <div id="tableErrorSummary" style="margin-top:12px"></div>
+</div>
 </body>
 </html>
