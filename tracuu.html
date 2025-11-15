@@ -627,5 +627,55 @@ btnTongHop.addEventListener("click", ()=>{
   <button class="tab-btn" data-tab="loiChiTiet">Chi tiết lỗi</button>
 <button class="tab-btn" data-tab="loiTongHop">Tổng hợp lỗi</button>
 </script>
+  <!-- TAB BUTTONS MỚI -->
+<button class="tab-btn" data-tab="chiTietLoi">Chi tiết lỗi</button>
+<button class="tab-btn" data-tab="tongHopLoi">Tổng hợp lỗi</button>
+
+<!-- PANEL CHI TIẾT LỖI -->
+<div id="panel-chiTietLoi" style="display:none; margin-top:12px;">
+  <h3>Chi tiết lỗi</h3>
+  <label>Nhập Site:</label>
+  <input type="text" id="inputSite" placeholder="Nhập mã trạm">
+  <div id="suggestSite" style="border:1px solid #ccc; max-height:200px; overflow:auto;"></div>
+  <div id="resultSite" style="margin-top:8px;"></div>
+  <ul id="listLoi"></ul>
+
+  <label>Nhập Lỗi:</label>
+  <input type="text" id="inputLoi" placeholder="Nhập tên lỗi từ D1-Q1">
+  <div id="suggestLoi" style="border:1px solid #ccc; max-height:200px; overflow:auto;"></div>
+  <table id="tableLoi" border="1" style="margin-top:8px; border-collapse:collapse;">
+    <thead><tr><th>Site</th><th>Huyện</th><th>5G</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- PANEL TỔNG HỢP LỖI -->
+<div id="panel-tongHopLoi" style="display:none; margin-top:12px;">
+  <h3>Tổng hợp lỗi</h3>
+  <label>Chọn đơn vị:</label>
+  <input type="checkbox" id="chkVTT" checked>VTT
+  <input type="checkbox" id="chkVCC" checked>VCC
+  <input type="checkbox" id="chkVCTL" checked>VCTL
+  <br>
+  <label>Chọn Huyện:</label>
+  <select id="selectHuyen" multiple style="min-width:200px; height:80px;"></select>
+  <br>
+  <button id="btnTongHop">Thống kê</button>
+  <table id="tableTongHop" border="1" style="margin-top:8px; border-collapse:collapse;">
+    <thead><tr><th>Huyện</th><th>Tổng số trạm</th><th>Số trạm tồn</th><th>Tỉ lệ</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+// ================= TAB SWITCH =================
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('#panel-chiTietLoi, #panel-tongHopLoi').forEach(p=>p.style.display='none');
+    document.getElementById('panel-'+tab).style.display='block';
+  });
+});
+</script>
 </body>
 </html>
