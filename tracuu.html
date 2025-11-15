@@ -452,9 +452,8 @@ function toggleDetail(encKey, mode){
 </script>
 
 
- <!-- ================= Tab Error ================= -->
+<!-- ================= Tab Error ================= -->
 <script>
-/* ================= Config cho Error ================= */
 const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
 let errorData = [];
 
@@ -469,10 +468,9 @@ async function fetchErrorSheet(){
 
 /* ================= Thêm tab Error vào header ================= */
 window.addEventListener('load', async ()=>{
-  // fetch sheet error
   await fetchErrorSheet();
 
-  // tạo nút tab Error và panel
+  // thêm nút tab Error
   const tabContainer = document.querySelector('.tabs');
   if(tabContainer){
     const btn = document.createElement('button');
@@ -481,22 +479,23 @@ window.addEventListener('load', async ()=>{
     btn.textContent = 'Error';
     tabContainer.appendChild(btn);
 
+    // thêm panel Error
     const container = document.querySelector('.container .card');
-
     const panel = document.createElement('div');
     panel.id = 'panel-error';
     panel.style.display = 'none';
     panel.style.marginTop = '12px';
     panel.innerHTML = `
-      <div class="controls">
-        <input id="inputError" type="text" placeholder="Nhập mã trạm cần tìm (ví dụ: QNM0010)" style="flex-grow:1;min-width:220px;padding:10px;border-radius:8px;border:1px solid #e8f4ff;background:#fbfdff;">
+      <div class="controls" style="position:relative">
+        <input id="inputError" type="text" placeholder="Nhập mã trạm cần tìm..." style="flex-grow:1;min-width:220px;padding:10px;border-radius:8px;border:1px solid #e8f4ff;background:#fbfdff;">
+        <div id="suggestionsError" style="position:absolute;top:46px;left:0;background:#fff;border:1px solid #e8f4ff;border-radius:8px;box-shadow:0 8px 22px rgba(10,30,60,0.06);max-height:260px;overflow:auto;width:340px;z-index:60;display:none"></div>
         <button id="btnErrorReset" class="btn ghost">Reset</button>
       </div>
       <div id="errorResult" style="margin-top:12px"></div>
     `;
     container.appendChild(panel);
 
-    // xử lý click tab
+    // click tab
     btn.addEventListener('click', ()=>{
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
@@ -507,24 +506,52 @@ window.addEventListener('load', async ()=>{
       document.getElementById('panel-tong').style.display = 'none';
       document.getElementById('panel-error').style.display = 'block';
 
-      // clear result khi mở tab
-      document.getElementById('errorResult').innerHTML = '';
+      // reset khi mở tab
       document.getElementById('inputError').value = '';
+      document.getElementById('errorResult').innerHTML = '';
+      hideSuggestionsError();
     });
 
-    // setup input + reset
+    // input + gợi ý
     const input = document.getElementById('inputError');
+    const box = document.getElementById('suggestionsError');
     const result = document.getElementById('errorResult');
 
     input.addEventListener('input', ()=>{
-      const tram = input.value.trim();
-      if(tram === '') { result.innerHTML=''; return; }
-      showErrors(tram);
+      const q = input.value.trim().toLowerCase();
+      box.innerHTML = '';
+      if(!q){ box.style.display='none'; return; }
+
+      const found = new Set();
+      for(let i=1;i<errorData.length;i++){
+        const r = errorData[i];
+        const tram = r[0];
+        if(tram && String(tram).toLowerCase().includes(q)) found.add(tram);
+        if(found.size>=40) break;
+      }
+
+      Array.from(found).slice(0,30).forEach(s=>{
+        const d = document.createElement('div');
+        d.textContent = s;
+        d.style.cursor = 'pointer';
+        d.onclick = ()=>{
+          input.value = '';
+          box.innerHTML = '';
+          box.style.display = 'none';
+          showErrors(s);
+        };
+        box.appendChild(d);
+      });
+      box.style.display = found.size ? 'block' : 'none';
     });
 
+    function hideSuggestionsError(){ box.style.display='none'; box.innerHTML=''; }
+
+    // reset nút
     document.getElementById('btnErrorReset').addEventListener('click', ()=>{
       input.value = '';
       result.innerHTML = '';
+      hideSuggestionsError();
     });
   }
 });
@@ -536,7 +563,6 @@ function showErrors(tram){
     return;
   }
 
-  // Tìm dòng trùng mã trạm
   const rows = errorData.slice(1).filter(r => String(r[0]||'') === tram);
   const result = document.getElementById('errorResult');
 
@@ -545,11 +571,11 @@ function showErrors(tram){
     return;
   }
 
-  const headerRow = errorData[0]; // dòng 1
+  const headerRow = errorData[0]; // Dòng 1
   let messages = [];
 
   rows.forEach(r=>{
-    for(let col=3; col<=20; col++){ // D → U
+    for(let col=3; col<=20; col++){ // D->U
       const cell = r[col];
       if(cell && (String(cell).toLowerCase() === 'e')){
         messages.push(headerRow[col] || `Cột ${col+1}`);
