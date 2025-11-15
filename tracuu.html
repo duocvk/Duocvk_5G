@@ -450,38 +450,41 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
-<!-- Button kích hoạt Tag 4 -->
-<button id="btnTag4" style="margin-top:20px;">Chi tiết lỗi theo trạm</button>
+<!-- BUTTON KÍCH HOẠT TAG 4 -->
+<button id="btnTag4" class="btn" style="margin-top:12px;">Chi tiết lỗi theo trạm</button>
 
-<!-- Container Tag 4 (ẩn lúc đầu) -->
-<div id="tag4Container" style="display:none; margin-top:10px; border-top:1px solid #ccc; padding-top:10px;">
+<!-- CONTAINER TAG 4 (ẨN MẶC ĐỊNH) -->
+<div id="tag4Container" style="display:none; margin-top:12px; border-top:1px solid #ccc; padding-top:10px;">
   <h3>Chi tiết lỗi</h3>
-  <input type="text" id="siteInput" placeholder="Nhập site..." autocomplete="off" style="width:200px;">
-  <div id="suggestions" style="border:1px solid #ccc; max-height:150px; overflow-y:auto; margin-top:2px;"></div>
-  <div id="siteErrors" style="margin-top:10px;"></div>
+  <input type="text" id="inputTag4" placeholder="Nhập site..." autocomplete="off" style="width:200px;">
+  <div id="suggestionsTag4" style="border:1px solid #eef8ff; max-height:150px; overflow:auto; margin-top:2px;"></div>
+  <div id="siteErrorsTag4" style="margin-top:10px;"></div>
 </div>
 
 <script>
   const btnTag4 = document.getElementById('btnTag4');
   const tag4Container = document.getElementById('tag4Container');
+  const siteInput4 = document.getElementById('inputTag4');
+  const suggestions4 = document.getElementById('suggestionsTag4');
+  const siteErrors4 = document.getElementById('siteErrorsTag4');
 
+  // Hiển thị container khi click button
   btnTag4.addEventListener('click', () => {
-    tag4Container.style.display = 'block'; // hiển thị input + gợi ý
+    tag4Container.style.display = 'block';
+    siteInput4.focus();
   });
 
-  const siteInput = document.getElementById('siteInput');
-  const suggestionsDiv = document.getElementById('suggestions');
-  const siteErrorsDiv = document.getElementById('siteErrors');
+  // Hiển thị gợi ý khi nhập
+  siteInput4.addEventListener('input', function(){
+    const q = this.value.trim().toUpperCase();
+    suggestions4.innerHTML = '';
+    if(!q) return;
 
-  // Khi người dùng nhập input, hiển thị gợi ý
-  siteInput.addEventListener('input', function() {
-    const val = this.value.trim().toUpperCase();
-    suggestionsDiv.innerHTML = '';
-    if (!val) return;
-
-    const matches = errorData.slice(2) // dữ liệu từ dòng 3 trở đi
-      .map(row => row[0])
-      .filter(site => site.includes(val));
+    // Dữ liệu sheet error nằm trong sheetData
+    // Giả sử sheet error là sheetData mới load (hoặc bạn load riêng)
+    const errorSheet = sheetData; // Thay bằng sheet chứa sheet 'error' nếu khác
+    const rows = errorSheet.slice(2); // dữ liệu từ dòng 3 trở đi
+    const matches = rows.map(r => r[0]).filter(s => s && s.includes(q));
 
     matches.forEach(site => {
       const div = document.createElement('div');
@@ -489,31 +492,33 @@ function toggleDetail(encKey, mode){
       div.style.cursor = 'pointer';
       div.style.padding = '2px 5px';
       div.addEventListener('click', () => {
-        displaySiteErrors(site);
-        siteInput.value = ''; // xóa input sau khi chọn
-        suggestionsDiv.innerHTML = '';
+        displayErrorsForSite(site);
+        siteInput4.value = '';
+        suggestions4.innerHTML = '';
       });
-      suggestionsDiv.appendChild(div);
+      suggestions4.appendChild(div);
     });
   });
 
-  function displaySiteErrors(site) {
-    const row = errorData.slice(2).find(r => r[0] === site);
-    if (!row) {
-      siteErrorsDiv.innerHTML = `<p>Không tìm thấy trạm ${site}</p>`;
+  function displayErrorsForSite(site){
+    const errorSheet = sheetData;
+    const row = errorSheet.slice(2).find(r => r[0] === site);
+    if(!row){
+      siteErrors4.innerHTML = `<p>Không tìm thấy trạm ${site}</p>`;
       return;
     }
-
     let html = `<p>Các lỗi của trạm ${site} là:</p>`;
-    for (let i = 3; i <= 16; i++) { // cột D→Q
-      if (row[i] == 1) {
-        const errorTitle = errorData[0][i] || `Lỗi cột ${i+1}`;
-        html += `<div>${errorTitle}</div>`;
+    for(let i=3; i<=16; i++){ // cột D→Q
+      if(isOne(row[i])){
+        const title = errorSheet[0][i] || `Lỗi cột ${i+1}`;
+        html += `<div>${title}</div>`;
       }
     }
-
-    siteErrorsDiv.innerHTML = html;
+    siteErrors4.innerHTML = html;
   }
+
+  // Giúp nhận biết tick = 1
+  function isOne(v){ return v === 1 || v === '1' || v === true; }
 </script>
 </body>
 </html>
