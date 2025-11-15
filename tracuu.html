@@ -450,22 +450,26 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
- <!-- Tab Lỗi -->
-<button class="tab-btn" data-tab="loi">Lỗi</button>
+<!-- TAB BUTTONS -->
+<button class="tab-btn" data-tab="loiChiTiet">Chi tiết lỗi</button>
+<button class="tab-btn" data-tab="loiTongHop">Tổng hợp lỗi</button>
 
-<div id="panel-loi" style="margin-top:12px;display:none;">
+<!-- PANEL CHI TIẾT LỖI -->
+<div id="panel-loiChiTiet" style="margin-top:12px; display:none;">
   <h3>Chi tiết lỗi theo Site</h3>
-  <input type="text" id="inputSite" placeholder="Nhập mã trạm (VD: 00, 01, QNM0005)">
-  <div id="suggestSite" class="suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; max-height:200px; overflow:auto; z-index:50;"></div>
-  <div id="ketQuaSite" style="margin-top:10px; font-weight:bold;"></div>
-  <ul id="listLoiSite"></ul>
+  <div style="position:relative; margin-bottom:8px;">
+    <input type="text" id="inputSiteChiTiet" placeholder="Nhập mã trạm (VD: 00, 01, QNM0005)">
+    <div id="suggestSiteChiTiet" class="suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; max-height:200px; overflow:auto; z-index:50;"></div>
+  </div>
+  <div id="ketQuaSiteChiTiet" style="margin-top:10px; font-weight:bold;"></div>
+  <ul id="listLoiSiteChiTiet"></ul>
 
-  <hr>
-  <h3>Tra cứu danh sách trạm theo lỗi</h3>
-  <input type="text" id="inputLoi" placeholder="Nhập tên lỗi (D1–Q1)">
-  <div id="suggestLoi" class="suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; max-height:200px; overflow:auto; z-index:50;"></div>
-  <div id="ketQuaLoi" style="margin-top:10px; font-weight:bold;"></div>
-  <table id="bangLoi" border="1" cellpadding="5" style="margin-top:10px; border-collapse:collapse;">
+  <div style="position:relative; margin-top:12px;">
+    <input type="text" id="inputLoiChiTiet" placeholder="Nhập tên lỗi (D1–Q1)">
+    <div id="suggestLoiChiTiet" class="suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; max-height:200px; overflow:auto; z-index:50;"></div>
+  </div>
+  <div id="ketQuaLoiChiTiet" style="margin-top:10px; font-weight:bold;"></div>
+  <table id="bangLoiChiTiet" border="1" cellpadding="5" style="margin-top:10px; border-collapse:collapse;">
     <thead>
       <tr><th>Site</th><th>Huyện</th><th>5G</th></tr>
     </thead>
@@ -473,67 +477,104 @@ function toggleDetail(encKey, mode){
   </table>
 </div>
 
-<script>
-// URL sheet error
-const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
+<!-- PANEL TỔNG HỢP LỖI -->
+<div id="panel-loiTongHop" style="margin-top:12px; display:none;">
+  <h3>Tổng hợp lỗi</h3>
+  <div style="margin-bottom:8px;">
+    <label><input type="checkbox" id="chkVTT" checked> VTT</label>
+    <label><input type="checkbox" id="chkVCC" checked> VCC</label>
+    <label><input type="checkbox" id="chkVCTL" checked> VCTL</label>
+  </div>
+  <div style="margin-bottom:8px;">
+    <select id="multiHuyenTongHop" multiple style="min-width:200px; height:80px;"></select>
+  </div>
+  <button id="btnTongHopLoi" class="btn">Thống kê</button>
+  <table id="bangTongHopLoi" border="1" cellpadding="5" style="margin-top:10px; border-collapse:collapse;">
+    <thead>
+      <tr><th>Huyện</th><th>Tổng số trạm</th><th>Số trạm tồn</th><th>Tỉ lệ</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
+<script>
+// ================= CONFIG =================
+const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
 let errorData = [], errorHeaders = [];
 
-async function fetchErrorSheet() {
+// ================= FETCH ERROR SHEET =================
+async function fetchErrorSheet(){
   const res = await fetch(URL_ERROR);
   const text = await res.text();
   const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
   const raw = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
   errorHeaders = raw[0].slice(3,17); // D1-Q1
-  errorData = raw.slice(2); // dữ liệu từ dòng 3 trở đi
+  errorData = raw.slice(2); // dữ liệu từ dòng 3
+  fillMultiSelectHuyen();
 }
+fetchErrorSheet();
 
-window.addEventListener('load', async ()=>{
-  await fetchErrorSheet();
+// ================= TAB SWITCH =================
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('#panel-chung, #panel-calloff, #panel-tong, #panel-loiChiTiet, #panel-loiTongHop').forEach(p=>p.style.display='none');
+    document.getElementById('panel-'+tab).style.display='block';
+  });
 });
 
-/* Tra cứu site */
-document.getElementById("inputSite").addEventListener("input", function () {
-  const val = this.value.trim().toUpperCase();
-  const box = document.getElementById("suggestSite");
-  if (!val){ box.style.display='none'; return; }
+// ================= CHI TIẾT LỖI =================
+function esc(s){ return String(s||''); }
+
+const inputSite = document.getElementById("inputSiteChiTiet");
+const suggestSite = document.getElementById("suggestSiteChiTiet");
+const ketQuaSite = document.getElementById("ketQuaSiteChiTiet");
+const ulSite = document.getElementById("listLoiSiteChiTiet");
+
+inputSite.addEventListener("input", ()=>{
+  const val = inputSite.value.trim().toUpperCase();
+  if(!val){ suggestSite.style.display='none'; return; }
   const list = errorData.filter(r=>r[0]?.toUpperCase().includes(val)).map(r=>r[0]);
-  box.innerHTML = list.map(x=>`<div>${x}</div>`).join("");
-  box.style.display = list.length ? "block":"none";
-  [...box.children].forEach(div=>{
+  suggestSite.innerHTML = list.map(x=>`<div>${x}</div>`).join("");
+  suggestSite.style.display = list.length?"block":"none";
+  [...suggestSite.children].forEach(div=>{
     div.onclick = ()=>{
-      this.value = "";
-      box.style.display='none';
-      traCuuLoiTheoSite(div.textContent);
+      inputSite.value='';
+      suggestSite.style.display='none';
+      traCuuLoiSite(div.textContent);
     };
   });
 });
 
-function traCuuLoiTheoSite(site){
-  const ketQua = document.getElementById("ketQuaSite");
-  const ul = document.getElementById("listLoiSite");
-  ul.innerHTML="";
+function traCuuLoiSite(site){
+  ulSite.innerHTML="";
   const row = errorData.find(r=>r[0]===site);
-  if(!row){ ketQua.textContent = "Không tìm thấy trạm."; return; }
+  if(!row){ ketQuaSite.textContent="Không tìm thấy trạm."; return; }
   const loiList = [];
   for(let i=3;i<=16;i++){ if(row[i]=="1") loiList.push(errorHeaders[i-3]); }
-  if(loiList.length===0){ ketQua.textContent=`Trạm ${site} không tồn lỗi nào.`; return; }
-  ketQua.textContent=`Các lỗi tồn của trạm ${site} gồm:`;
-  loiList.forEach(l=>ul.innerHTML+=`<li>${l}</li>`);
+  if(loiList.length===0){ ketQuaSite.textContent=`Trạm ${site} không tồn lỗi nào.`; return; }
+  ketQuaSite.textContent=`Các lỗi tồn của trạm ${site} gồm:`;
+  loiList.forEach(l=>ulSite.innerHTML+=`<li>${l}</li>`);
 }
 
-/* Tra cứu lỗi */
-document.getElementById("inputLoi").addEventListener("input", function(){
-  const val = this.value.trim().toUpperCase();
-  const box = document.getElementById("suggestLoi");
-  if(!val){ box.style.display='none'; return; }
+// ================= TRA CỨU DANH SÁCH TRẠM THEO LỖI =================
+const inputLoi = document.getElementById("inputLoiChiTiet");
+const suggestLoi = document.getElementById("suggestLoiChiTiet");
+const ketQuaLoi = document.getElementById("ketQuaLoiChiTiet");
+const tbodyLoi = document.querySelector("#bangLoiChiTiet tbody");
+
+inputLoi.addEventListener("input", ()=>{
+  const val = inputLoi.value.trim().toUpperCase();
+  if(!val){ suggestLoi.style.display='none'; return; }
   const list = errorHeaders.filter(h=>h.toUpperCase().includes(val));
-  box.innerHTML = list.map(x=>`<div>${x}</div>`).join("");
-  box.style.display = list.length?"block":"none";
-  [...box.children].forEach(div=>{
+  suggestLoi.innerHTML = list.map(x=>`<div>${x}</div>`).join("");
+  suggestLoi.style.display = list.length?"block":"none";
+  [...suggestLoi.children].forEach(div=>{
     div.onclick = ()=>{
-      this.value="";
-      box.style.display='none';
+      inputLoi.value='';
+      suggestLoi.style.display='none';
       traCuuTrangTheoLoi(div.textContent);
     };
   });
@@ -541,16 +582,50 @@ document.getElementById("inputLoi").addEventListener("input", function(){
 
 function traCuuTrangTheoLoi(loi){
   const idx = errorHeaders.indexOf(loi);
-  const ketQua = document.getElementById("ketQuaLoi");
-  const tbody = document.querySelector("#bangLoi tbody");
-  tbody.innerHTML="";
-  if(idx===-1){ ketQua.textContent="Không tìm thấy lỗi."; return; }
-  let found=[];
+  tbodyLoi.innerHTML="";
+  if(idx===-1){ ketQuaLoi.textContent="Không tìm thấy lỗi."; return; }
+  const found = [];
   errorData.forEach(r=>{ if(r[idx+3]=="1") found.push([r[0],r[1],r[2]]); });
-  if(found.length===0){ ketQua.textContent=`Không có trạm nào tồn lỗi ${loi}`; return; }
-  ketQua.textContent=`Danh sách trạm tồn lỗi: ${loi}`;
-  found.forEach(r=>{ tbody.innerHTML+=`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`; });
+  if(found.length===0){ ketQuaLoi.textContent=`Không có trạm nào tồn lỗi ${loi}`; return; }
+  ketQuaLoi.textContent=`Danh sách trạm tồn lỗi: ${loi}`;
+  found.forEach(r=>tbodyLoi.innerHTML+=`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`);
 }
+
+// ================= TỔNG HỢP LỖI =================
+const chkVTT = document.getElementById("chkVTT");
+const chkVCC = document.getElementById("chkVCC");
+const chkVCTL = document.getElementById("chkVCTL");
+const multiHuyen = document.getElementById("multiHuyenTongHop");
+const btnTongHop = document.getElementById("btnTongHopLoi");
+const tbodyTongHop = document.querySelector("#bangTongHopLoi tbody");
+
+function fillMultiSelectHuyen(){
+  const setHuyen = new Set(errorData.map(r=>r[1]));
+  multiHuyen.innerHTML = "";
+  Array.from(setHuyen).sort().forEach(h=>{ multiHuyen.innerHTML+=`<option value="${h}" selected>${h}</option>`; });
+}
+
+btnTongHop.addEventListener("click", ()=>{
+  const selectedHuyen = Array.from(multiHuyen.selectedOptions).map(o=>o.value);
+  const useVTT = chkVTT.checked, useVCC = chkVCC.checked, useVCTL = chkVCTL.checked;
+  const colVTT=[3,4,5], colVCC=[6,7,8,9,10,11,12,13,14], colVCTL=[15,16];
+  tbodyTongHop.innerHTML="";
+  selectedHuyen.forEach(h=>{
+    const rows = errorData.filter(r=>r[1]===h);
+    let total = rows.length, tongTramTon=0;
+    rows.forEach(r=>{
+      let ton = false;
+      if(useVTT && colVTT.some(i=>r[i]=="1")) ton=true;
+      if(useVCC && colVCC.some(i=>r[i]=="1")) ton=true;
+      if(useVCTL && colVCTL.some(i=>r[i]=="1")) ton=true;
+      if(ton) tongTramTon++;
+    });
+    const tiLe = total?Math.round(tongTramTon*100/total):0;
+    tbodyTongHop.innerHTML+=`<tr><td>${h}</td><td>${total}</td><td>${tongTramTon}</td><td>${tiLe}%</td></tr>`;
+  });
+});
+  <button class="tab-btn" data-tab="loiChiTiet">Chi tiết lỗi</button>
+<button class="tab-btn" data-tab="loiTongHop">Tổng hợp lỗi</button>
 </script>
 </body>
 </html>
