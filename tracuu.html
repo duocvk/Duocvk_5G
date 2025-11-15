@@ -595,7 +595,7 @@ function showErrors(tram){
 </script>
   
 
-<!-- Thêm nút tab vào cùng hàng với các tab khác -->
+<!-- Thêm nút tab vào cùng hàng với các tab hiện tại -->
 <button class="tab-btn" data-tab="loiChiTiet">Lỗi chi tiết</button>
 
 <!-- Panel Lỗi chi tiết -->
@@ -612,82 +612,90 @@ function showErrors(tram){
 
 <script>
 /* ================= Lỗi chi tiết ================= */
-function setupLoiChiTiet() {
+async function setupLoiChiTietTab() {
+  // Đảm bảo errorData đã fetch
+  if(!errorData || errorData.length===0){
+    try{
+      const res = await fetch(URL_ERROR);
+      const text = await res.text();
+      const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
+      errorData = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
+    } catch(err){
+      console.error('Lỗi fetch sheet error:', err);
+      return;
+    }
+  }
+
   const input = document.getElementById('inputLoiChiTiet');
   const box = document.getElementById('suggestionsLoiChiTiet');
   const table = document.getElementById('tableLoiChiTiet');
 
   // Lấy header từ D1→U1 (index 3→20)
-  const errorHeader = errorData[0].slice(3, 21);
+  const errorHeader = errorData[0].slice(3,21);
+
+  function hideSuggestions(){ box.style.display='none'; box.innerHTML=''; }
 
   // Input gợi ý
   input.addEventListener('input', e => {
     const q = e.target.value.trim().toLowerCase();
     box.innerHTML = '';
-    if(!q){ box.style.display='none'; return; }
+    if(!q){ hideSuggestions(); return; }
     const found = errorHeader.filter(h => h && h.toLowerCase().includes(q)).slice(0,30);
     found.forEach(s => {
       const d = document.createElement('div'); 
       d.textContent = s;
-      d.onclick = () => showLoiChiTiet(s);
+      d.onclick = ()=>showLoiChiTiet(s);
       box.appendChild(d);
     });
     box.style.display = found.length ? 'block' : 'none';
   });
 
   document.getElementById('resetLoiChiTiet').addEventListener('click', ()=>{
-    input.value=''; table.innerHTML=''; hideSuggestionsLoiChiTiet();
+    input.value=''; table.innerHTML=''; hideSuggestions();
   });
-}
 
-function hideSuggestionsLoiChiTiet(){ 
-  const b = document.getElementById('suggestionsLoiChiTiet'); b.style.display='none'; b.innerHTML=''; 
-}
+  function showLoiChiTiet(selectedHeader){
+    hideSuggestions();
+    input.value='';
 
-function showLoiChiTiet(selectedHeader){
-  const input = document.getElementById('inputLoiChiTiet');
-  const table = document.getElementById('tableLoiChiTiet');
-  hideSuggestionsLoiChiTiet();
-  input.value='';
+    const idx = errorData[0].indexOf(selectedHeader);
+    if(idx === -1){ table.innerHTML='Không tìm thấy lỗi'; return; }
 
-  const idx = errorData[0].indexOf(selectedHeader);
-  if(idx === -1){ table.innerHTML='Không tìm thấy lỗi'; return; }
+    const rows = errorData.slice(1).filter(r => r[idx] && String(r[idx]).toLowerCase() === 'e');
 
-  const rows = errorData.slice(1).filter(r => r[idx] && String(r[idx]).toLowerCase() === 'e');
+    if(rows.length===0){
+      table.innerHTML = `Không có trạm nào bị lỗi ${selectedHeader}`;
+      return;
+    }
 
-  if(rows.length===0){
-    table.innerHTML = `Không có trạm nào bị lỗi ${selectedHeader}`;
-    return;
+    let html = `<p>Lỗi: <b>${selectedHeader}</b></p><table><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead><tbody>`;
+    rows.forEach(r => {
+      html += `<tr><td>${esc(r[0]||'')}</td><td>${esc(r[1]||'')}</td><td>${esc(r[2]||'')}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    table.innerHTML = html;
   }
 
-  let html = `<p>Lỗi: <b>${selectedHeader}</b></p><table><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead><tbody>`;
-  rows.forEach(r => {
-    html += `<tr><td>${esc(r[0]||'')}</td><td>${esc(r[1]||'')}</td><td>${esc(r[2]||'')}</td></tr>`;
+  // Cập nhật tab show/hide panel
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
+      document.getElementById('panel-chung').style.display = tab==='chung' ? 'block' : 'none';
+      document.getElementById('panel-calloff').style.display = tab==='calloff' ? 'block' : 'none';
+      document.getElementById('panel-tong').style.display = tab==='tong' ? 'block' : 'none';
+      document.getElementById('panel-error').style.display = tab==='error' ? 'block' : 'none';
+      document.getElementById('panel-loiChiTiet').style.display = tab==='loiChiTiet' ? 'block' : 'none';
+      hideSuggestions(); hideSuggestionsCalloff(); hideSuggestionsLoiChiTiet();
+    });
   });
-  html += '</tbody></table>';
-  table.innerHTML = html;
+
+  function hideSuggestionsLoiChiTiet(){ box.style.display='none'; box.innerHTML=''; }
 }
 
-/* ================= Đăng ký tab hiển thị panel ================= */
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const tab = btn.getAttribute('data-tab');
-    document.getElementById('panel-chung').style.display = tab==='chung' ? 'block' : 'none';
-    document.getElementById('panel-calloff').style.display = tab==='calloff' ? 'block' : 'none';
-    document.getElementById('panel-tong').style.display = tab==='tong' ? 'block' : 'none';
-    document.getElementById('panel-error').style.display = tab==='error' ? 'block' : 'none';
-    document.getElementById('panel-loiChiTiet').style.display = tab==='loiChiTiet' ? 'block' : 'none';
-    hideSuggestions(); hideSuggestionsCalloff(); hideSuggestionsLoiChiTiet();
-  });
-});
-
-/* ================= Khởi tạo khi load ================= */
-window.addEventListener('load', ()=>{
-  if(!errorData || errorData.length===0) return; // đảm bảo dữ liệu error đã fetch
-  setupLoiChiTiet();
-});
+// Khởi tạo tab Lỗi chi tiết khi load
+window.addEventListener('load', setupLoiChiTietTab);
 </script>
 
   
