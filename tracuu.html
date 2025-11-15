@@ -596,7 +596,7 @@ function showErrors(tram){
 </script>
   
 
- <!-- Thêm tab lỗi chi tiết trực tiếp trong div.tabs cùng hàng với các tab khác -->
+ <!-- Thêm trực tiếp trong div.tabs -->
 <button class="tab-btn" data-tab="loiChiTiet">Lỗi chi tiết</button>
 
 <!-- Panel Lỗi chi tiết -->
@@ -608,6 +608,7 @@ function showErrors(tram){
     </div>
     <button id="resetLoiChiTiet" class="btn ghost">Reset</button>
   </div>
+  <div id="summaryLoiChiTiet" style="margin-top:12px"></div>
   <div id="tableLoiChiTiet" style="margin-top:12px"></div>
 </div>
 
@@ -628,13 +629,14 @@ async function setupLoiChiTietTab() {
   const input = document.getElementById('inputLoiChiTiet');
   const box = document.getElementById('suggestionsLoiChiTiet');
   const table = document.getElementById('tableLoiChiTiet');
+  const summary = document.getElementById('summaryLoiChiTiet');
 
-  // Header lỗi D1→U1 (index 3→20)
-  const errorHeader = errorData[0].slice(3,21);
+  const errorHeader = errorData[0].slice(3,21); // D1→U1
+  const colHeader = errorData[0].slice(0,3); // A,B,C
+  const colHuyenIdx = 1; // cột B = huyện
 
   function hideSuggestions(){ box.style.display='none'; box.innerHTML=''; }
 
-  // Input gợi ý
   input.addEventListener('input', e => {
     const q = e.target.value.trim().toLowerCase();
     box.innerHTML = '';
@@ -650,12 +652,13 @@ async function setupLoiChiTietTab() {
   });
 
   document.getElementById('resetLoiChiTiet').addEventListener('click', ()=>{
-    input.value=''; table.innerHTML=''; hideSuggestions();
+    input.value=''; table.innerHTML=''; summary.innerHTML=''; hideSuggestions();
   });
 
   function showLoiChiTiet(selectedHeader){
     hideSuggestions();
     input.value='';
+    table.innerHTML=''; summary.innerHTML='';
 
     const idx = errorData[0].indexOf(selectedHeader);
     if(idx === -1){ table.innerHTML='Không tìm thấy lỗi'; return; }
@@ -667,9 +670,18 @@ async function setupLoiChiTietTab() {
       return;
     }
 
-    // Lấy tiêu đề cột A,B,C từ dòng 1 của sheet error
-    const colHeader = errorData[0].slice(0,3);
+    // Tạo bảng tổng hợp theo huyện
+    const summaryMap = new Map();
+    rows.forEach(r=>{
+      const huyen = r[colHuyenIdx] || '(Không xác định)';
+      summaryMap.set(huyen, (summaryMap.get(huyen)||0)+1);
+    });
+    let sumHtml = '<table style="width:auto;border:1px solid #ccc;border-collapse:collapse;"><thead><tr><th>Huyện</th><th>Số lỗi</th></tr></thead><tbody>';
+    summaryMap.forEach((count,h)=>{ sumHtml += `<tr><td>${esc(h)}</td><td style="text-align:center">${count}</td></tr>`; });
+    sumHtml += '</tbody></table>';
+    summary.innerHTML = sumHtml;
 
+    // Tạo bảng chi tiết
     let html = `<p>Lỗi: <b>${selectedHeader}</b></p><table><thead><tr>`;
     colHeader.forEach(h=>html+=`<th>${esc(h||'')}</th>`);
     html += `</tr></thead><tbody>`;
@@ -697,7 +709,6 @@ async function setupLoiChiTietTab() {
 
   function hideSuggestionsLoiChiTiet(){ box.style.display='none'; box.innerHTML=''; }
 }
-
 window.addEventListener('load', setupLoiChiTietTab);
 </script>
 
