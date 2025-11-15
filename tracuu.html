@@ -450,8 +450,11 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
-<!-- TAG 4: CHI TIẾT LỖI -->
-<div id="tag4" style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
+<!-- Button kích hoạt Tag 4 -->
+<button id="btnTag4" style="margin-top:20px;">Chi tiết lỗi theo trạm</button>
+
+<!-- Container Tag 4 (ẩn lúc đầu) -->
+<div id="tag4Container" style="display:none; margin-top:10px; border-top:1px solid #ccc; padding-top:10px;">
   <h3>Chi tiết lỗi</h3>
   <input type="text" id="siteInput" placeholder="Nhập site..." autocomplete="off" style="width:200px;">
   <div id="suggestions" style="border:1px solid #ccc; max-height:150px; overflow-y:auto; margin-top:2px;"></div>
@@ -459,16 +462,18 @@ function toggleDetail(encKey, mode){
 </div>
 
 <script>
+  const btnTag4 = document.getElementById('btnTag4');
+  const tag4Container = document.getElementById('tag4Container');
+
+  btnTag4.addEventListener('click', () => {
+    tag4Container.style.display = 'block'; // hiển thị input + gợi ý
+  });
+
   const siteInput = document.getElementById('siteInput');
   const suggestionsDiv = document.getElementById('suggestions');
   const siteErrorsDiv = document.getElementById('siteErrors');
 
-  // Giả sử errorData đã load từ Google Sheet dạng array: 
-  // errorData[0] = dòng tiêu đề
-  // errorData[1] = dòng trống
-  // errorData[2..n] = dữ liệu sites
-  // cột D→Q = lỗi (tick = 1)
-  
+  // Khi người dùng nhập input, hiển thị gợi ý
   siteInput.addEventListener('input', function() {
     const val = this.value.trim().toUpperCase();
     suggestionsDiv.innerHTML = '';
@@ -485,7 +490,7 @@ function toggleDetail(encKey, mode){
       div.style.padding = '2px 5px';
       div.addEventListener('click', () => {
         displaySiteErrors(site);
-        siteInput.value = ''; // xóa input
+        siteInput.value = ''; // xóa input sau khi chọn
         suggestionsDiv.innerHTML = '';
       });
       suggestionsDiv.appendChild(div);
