@@ -476,7 +476,7 @@ window.addEventListener('load', async ()=>{
     const btn = document.createElement('button');
     btn.className = 'tab-btn';
     btn.setAttribute('data-tab','error');
-    btn.textContent = 'Error';
+    btn.textContent = 'Lỗi theo trạm';
     tabContainer.appendChild(btn);
 
     // thêm panel Error
@@ -594,6 +594,87 @@ function showErrors(tram){
 }
 </script>
   
+
+<!-- Tab Lỗi chi tiết -->
+<button class="tab-btn" data-tab="loiChiTiet">Lỗi chi tiết</button>
+
+<div id="panel-loiChiTiet" style="margin-top:12px;display:none">
+  <div class="controls">
+    <div style="position:relative">
+      <input id="inputLoiChiTiet" type="text" placeholder="Tìm lỗi...">
+      <div id="suggestionsLoiChiTiet" style="display:none"></div>
+    </div>
+    <button id="resetLoiChiTiet" class="btn ghost">Reset</button>
+  </div>
+  <div id="tableLoiChiTiet" style="margin-top:12px"></div>
+</div>
+
+<script>
+/* ================= Lỗi chi tiết ================= */
+async function setupLoiChiTiet() {
+  const input = document.getElementById('inputLoiChiTiet');
+  const box = document.getElementById('suggestionsLoiChiTiet');
+  const table = document.getElementById('tableLoiChiTiet');
+
+  // Lấy header từ D1→U1
+  const errorHeader = errorData[0].slice(3, 21); // D→U = index 3→20
+
+  input.addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    box.innerHTML = '';
+    if(!q){ box.style.display='none'; return; }
+    const found = errorHeader.filter(h => h && h.toLowerCase().includes(q)).slice(0,30);
+    found.forEach(s => {
+      const d = document.createElement('div'); d.textContent = s;
+      d.onclick = () => showLoiChiTiet(s);
+      box.appendChild(d);
+    });
+    box.style.display = found.length ? 'block' : 'none';
+  });
+
+  document.getElementById('resetLoiChiTiet').addEventListener('click', ()=>{
+    input.value=''; table.innerHTML=''; hideSuggestionsLoiChiTiet();
+  });
+}
+
+function hideSuggestionsLoiChiTiet(){ 
+  const b = document.getElementById('suggestionsLoiChiTiet'); b.style.display='none'; b.innerHTML=''; 
+}
+
+function showLoiChiTiet(selectedHeader){
+  const input = document.getElementById('inputLoiChiTiet');
+  const table = document.getElementById('tableLoiChiTiet');
+  hideSuggestionsLoiChiTiet();
+  input.value='';
+
+  // Tìm cột của header đã chọn
+  const idx = errorData[0].indexOf(selectedHeader);
+  if(idx === -1){ table.innerHTML='Không tìm thấy lỗi'; return; }
+
+  // Lọc các trạm có lỗi (có e hoặc E)
+  const rows = errorData.slice(1).filter(r => r[idx] && String(r[idx]).toLowerCase() === 'e');
+
+  if(rows.length===0){
+    table.innerHTML = `Không có trạm nào bị lỗi ${selectedHeader}`;
+    return;
+  }
+
+  // Tạo bảng kết quả: cột A,B,C
+  let html = `<p>Lỗi: <b>${selectedHeader}</b></p><table><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead><tbody>`;
+  rows.forEach(r => {
+    html += `<tr><td>${esc(r[0]||'')}</td><td>${esc(r[1]||'')}</td><td>${esc(r[2]||'')}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  table.innerHTML = html;
+}
+
+/* ================= Khởi tạo tab khi load ================= */
+window.addEventListener('load', ()=>{
+  if(!errorData || errorData.length===0) return; // đảm bảo errorData đã fetch
+  setupLoiChiTiet();
+});
+</script>
+
   
 </body>
 </html>
