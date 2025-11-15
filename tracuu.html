@@ -450,164 +450,196 @@ function toggleDetail(encKey, mode){
 
 /* ================= End ================= */
 </script>
-/* ================= BỔ SUNG MỚI: Chi tiết lỗi & Tổng hợp lỗi ================= */
+<script>
+/* ================= CONFIG SHEET ERROR ================= */
+const SHEET_ERROR_ID = '1Oc1rFENKMMuwG7XqqIm_MAlDi2Hkvi77m1ex5mC0N-8';
+const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ERROR_ID}/gviz/tq?tqx=out:json&sheet=error`;
 
-/* Sheet error */
-const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
-const IDX_ERR = { site:0, huyen:1, loaiStart:3, loaiEnd:16 }; // D-Q
+/* ================= DATA ================= */
+let errorData = []; // toàn bộ dữ liệu sheet error
+let errorHeader = []; // header D1-Q1
 
-let errorData = [];
-let errorHeader = [];
-
-/* Fetch sheet error */
+/* ================= FETCH SHEET ERROR ================= */
 async function fetchErrorSheet(){
   try{
     const res = await fetch(URL_ERROR);
     const text = await res.text();
     const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
-    const raw = (json.table.rows||[]).map(r => (r.c||[]).map(c=>c?c.v:''));
-    errorHeader = raw[0].slice(IDX_ERR.loaiStart, IDX_ERR.loaiEnd+1);
-    errorData = raw.slice(1);
-  }catch(e){ console.error(e); alert('Lỗi tải sheet error'); }
-}
-
-/* ================= Tạo tab Chi tiết lỗi ================= */
-function createErrorDetailTab(){
-  const container = document.querySelector('.container .card');
-  const html = `
-  <div id="panel-error-detail" style="margin-top:12px;display:none">
-    <div class="controls">
-      <div>
-        <label>Lỗi:</label>
-        <select id="dropErrorLoi"><option value="">--Chọn lỗi--</option></select>
-      </div>
-      <div>
-        <label>Trạm:</label>
-        <select id="dropErrorSite"><option value="">--Chọn trạm--</option></select>
-      </div>
-      <button id="resetErrorDetail" class="btn ghost">Reset</button>
-    </div>
-    <div id="errorDetailResult" style="margin-top:12px"></div>
-  </div>`;
-  container.insertAdjacentHTML('beforeend', html);
-
-  const tabs = container.querySelector('.tabs');
-  const btn = document.createElement('button');
-  btn.className='tab-btn'; btn.dataset.tab='error-detail'; btn.textContent='Chi tiết lỗi';
-  tabs.appendChild(btn);
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('panel-chung').style.display='none';
-    document.getElementById('panel-calloff').style.display='none';
-    document.getElementById('panel-tong').style.display='none';
-    document.getElementById('panel-error-detail').style.display='block';
-  });
-}
-
-/* ================= Setup Chi tiết lỗi ================= */
-function setupErrorDetail(){
-  if(!errorData.length) return;
-  const dropLoi = document.getElementById('dropErrorLoi');
-  errorHeader.forEach((h,i)=>{
-    const o=document.createElement('option'); o.value=i; o.textContent=h; dropLoi.appendChild(o);
-  });
-
-  const dropSite = document.getElementById('dropErrorSite');
-  const sites = Array.from(new Set(errorData.map(r=>r[IDX_ERR.site]))).sort();
-  sites.forEach(s=>{
-    const o=document.createElement('option'); o.value=s; o.textContent=s; dropSite.appendChild(o);
-  });
-
-  dropSite.addEventListener('change', drawErrorDetail);
-  dropLoi.addEventListener('change', drawErrorDetail);
-
-  document.getElementById('resetErrorDetail').addEventListener('click', ()=>{
-    dropLoi.value=''; dropSite.value=''; document.getElementById('errorDetailResult').innerHTML='';
-  });
-}
-
-/* ================= Vẽ bảng Chi tiết lỗi ================= */
-function drawErrorDetail(){
-  const site = document.getElementById('dropErrorSite').value;
-  const loiIdx = document.getElementById('dropErrorLoi').value;
-  if(!site) { document.getElementById('errorDetailResult').innerHTML=''; return; }
-
-  const row = errorData.find(r=>r[IDX_ERR.site]===site);
-  if(!row){ document.getElementById('errorDetailResult').innerHTML='Không tìm thấy trạm'; return; }
-
-  const loiList = [];
-  for(let i=IDX_ERR.loaiStart;i<=IDX_ERR.loaiEnd;i++){
-    if(row[i]==1 && (loiIdx==='' || i===parseInt(loiIdx)+IDX_ERR.loaiStart)) loiList.push(errorHeader[i-IDX_ERR.loaiStart]);
+    const raw = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
+    // Header D1-Q1
+    errorHeader = raw[0].slice(3,17); // D1-Q1
+    errorData = raw.slice(1); // dữ liệu từ hàng 2 trở đi
+  } catch(e){
+    console.error('Lỗi load sheet error', e);
+    alert('Không thể load sheet error.');
   }
+}
+
+/* ================= UTILITY ================= */
+function esc(s){ return String(s===undefined||s===null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function highlightClass(idx){ return idx%2===0?'row-even':'row-odd'; }
+
+/* ================= CHI TIẾT LỖI ================= */
+async function setupChiTietLoi(){
+  await fetchErrorSheet();
+
+  // Container
+  const container = document.createElement('div');
+  container.className = 'card';
+  container.innerHTML = `
+    <h3>Chi tiết lỗi</h3>
+    <div class="controls" style="gap:8px;flex-wrap:wrap">
+      <div>
+        <input id="inputSite" type="text" placeholder="Gõ mã trạm...">
+        <div id="suggestSite" style="position:absolute;background:#fff;border:1px solid #ccc;max-height:150px;overflow:auto;z-index:50;display:none"></div>
+      </div>
+      <select id="dropLoi"><option value="">--Chọn lỗi--</option></select>
+    </div>
+    <div id="tableChiTiet" style="margin-top:12px"></div>
+  `;
+  document.querySelector('.container').appendChild(container);
+
+  // Điền dropdown lỗi
+  const dropLoi = document.getElementById('dropLoi');
+  errorHeader.forEach((h,i)=>{
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = h;
+    dropLoi.appendChild(opt);
+  });
+
+  // Input site với suggestions
+  const inputSite = document.getElementById('inputSite');
+  const suggestSite = document.getElementById('suggestSite');
+  inputSite.addEventListener('input', e=>{
+    const q = e.target.value.trim().toLowerCase();
+    suggestSite.innerHTML=''; if(!q){ suggestSite.style.display='none'; return; }
+    const found = new Set();
+    for(let r of errorData){
+      const site = r[0];
+      if(site && site.toLowerCase().includes(q)) found.add(site);
+      if(found.size>=30) break;
+    }
+    Array.from(found).forEach(s=>{
+      const div = document.createElement('div'); div.textContent = s;
+      div.onclick = ()=>{ inputSite.value=''; suggestSite.style.display='none'; renderChiTiet(s, dropLoi.value); };
+      suggestSite.appendChild(div);
+    });
+    suggestSite.style.display = found.size? 'block':'none';
+  });
+
+  dropLoi.addEventListener('change', ()=>{ 
+    const site = inputSite.value.trim(); 
+    if(site) renderChiTiet(site, dropLoi.value);
+  });
+}
+
+function renderChiTiet(site, loiIdx){
+  const tableDiv = document.getElementById('tableChiTiet');
+  const row = errorData.find(r=>r[0]===site);
+  if(!row){
+    tableDiv.innerHTML=`<p>Không tìm thấy trạm ${esc(site)}</p>`; 
+    return;
+  }
+  // Lấy các lỗi tick =1
+  const loiList = [];
+  errorHeader.forEach((h,i)=>{
+    const val = row[i+3]; // D-Q
+    if(val===1 || val==='1') loiList.push(h);
+  });
 
   let html='';
-  if(loiList.length){
-    html+=`<p>Các lỗi tồn của trạm <b>${site}</b> gồm:</p>`;
-    html+='<ul>';
-    loiList.forEach(l=>html+=`<li>${l}</li>`);
-    html+='</ul>';
+  if(loiList.length===0){
+    html=`<p>Trạm ${esc(site)} không có lỗi tồn nào.</p>`;
   } else {
-    html=`<p>Trạm <b>${site}</b> không có lỗi tồn nào.</p>`;
+    html=`<p>Các lỗi tồn của trạm ${esc(site)} gồm:</p>`;
+    html+='<table style="border-collapse:collapse;width:100%"><thead><tr><th style="border:1px solid #ccc">Huyện</th><th style="border:1px solid #ccc">Site</th><th style="border:1px solid #ccc">5G</th><th style="border:1px solid #ccc">Lỗi</th></tr></thead><tbody>';
+    loiList.forEach((l,i)=>{
+      html+=`<tr class="${highlightClass(i)}">`;
+      html+=`<td style="border:1px solid #ccc">${esc(row[1])}</td>`;
+      html+=`<td style="border:1px solid #ccc">${esc(row[0])}</td>`;
+      html+=`<td style="border:1px solid #ccc">${esc(row[2])}</td>`;
+      html+=`<td style="border:1px solid #ccc;white-space:wrap">${esc(l)}</td>`;
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
   }
-
-  document.getElementById('errorDetailResult').innerHTML=html;
+  tableDiv.innerHTML = html;
 }
 
-/* ================= Tạo tab Tổng hợp lỗi ================= */
-function createErrorSummaryTab(){
-  const container = document.querySelector('.container .card');
-  const html = `
-  <div id="panel-error-summary" style="margin-top:12px;display:none">
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button id="btnErrorSummary" class="btn">Tổng hợp lỗi</button>
+/* ================= TỔNG HỢP LỖI ================= */
+async function setupTongHopLoi(){
+  await fetchErrorSheet();
+  const container = document.createElement('div');
+  container.className = 'card';
+  container.innerHTML = `
+    <h3>Tổng hợp lỗi</h3>
+    <div class="controls" style="gap:8px;flex-wrap:wrap">
+      <select id="dropHuyenTong" multiple style="min-width:200px"><option value="all">Tất cả</option></select>
+      <label><input type="checkbox" id="chkVTT" checked>VTT</label>
+      <label><input type="checkbox" id="chkVCC" checked>VCC</label>
+      <label><input type="checkbox" id="chkVCTL" checked>VCTL</label>
+      <button id="btnTongHop" class="btn">Thống kê</button>
     </div>
-    <div id="errorSummaryArea" style="margin-top:12px;overflow:auto"></div>
-  </div>`;
-  container.insertAdjacentHTML('beforeend', html);
+    <div id="tableTongHop" style="margin-top:12px"></div>
+  `;
+  document.querySelector('.container').appendChild(container);
 
-  const tabs = container.querySelector('.tabs');
-  const btn = document.createElement('button');
-  btn.className='tab-btn'; btn.dataset.tab='error-summary'; btn.textContent='Tổng hợp lỗi';
-  tabs.appendChild(btn);
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('panel-chung').style.display='none';
-    document.getElementById('panel-calloff').style.display='none';
-    document.getElementById('panel-tong').style.display='none';
-    document.getElementById('panel-error-detail').style.display='none';
-    document.getElementById('panel-error-summary').style.display='block';
+  // Điền dropdown huyện
+  const huyenSet = new Set();
+  errorData.forEach(r=>{ if(r[1]) huyenSet.add(r[1]); });
+  const dropHuyen = document.getElementById('dropHuyenTong');
+  Array.from(huyenSet).sort().forEach(h=>{
+    const opt = document.createElement('option'); opt.value=h; opt.textContent=h; dropHuyen.appendChild(opt);
   });
+
+  document.getElementById('btnTongHop').addEventListener('click', ()=>renderTongHop());
 }
 
-/* ================= Vẽ bảng Tổng hợp lỗi ================= */
-function drawErrorSummary(){
-  const groups = {}; // {huyen:{total:n, loi:n}}
-  errorData.forEach(r=>{
-    const h = r[IDX_ERR.huyen]||'(Không xác định)';
-    if(!groups[h]) groups[h]={total:0,loi:0};
-    groups[h].total++;
-    const loi = r.slice(IDX_ERR.loaiStart, IDX_ERR.loaiEnd+1).some(v=>v==1);
-    if(loi) groups[h].loi++;
+function renderTongHop(){
+  const selectedHuyen = Array.from(document.getElementById('dropHuyenTong').selectedOptions).map(o=>o.value);
+  const chkVTT = document.getElementById('chkVTT').checked;
+  const chkVCC = document.getElementById('chkVCC').checked;
+  const chkVCTL = document.getElementById('chkVCTL').checked;
+
+  const rows = errorData.filter(r=>{
+    if(selectedHuyen.includes('all')) return true;
+    return selectedHuyen.includes(r[1]);
   });
 
-  let html='<table style="border-collapse:collapse;width:auto"><thead><tr><th style="border:1px solid #aaa;padding:4px">Huyện</th><th style="border:1px solid #aaa;padding:4px">Tổng số trạm</th><th style="border:1px solid #aaa;padding:4px">Số trạm tồn</th><th style="border:1px solid #aaa;padding:4px">% tồn</th></tr></thead><tbody>';
-  Object.entries(groups).forEach(([h,v],idx)=>{
-    const bg = idx%2===0?'#f9f9f9':'#fff';
-    const pct = v.total?v.loi*100/v.total:0;
-    html+=`<tr style="background:${bg}"><td style="border:1px solid #aaa;padding:4px">${h}</td><td style="border:1px solid #aaa;padding:4px;text-align:center">${v.total}</td><td style="border:1px solid #aaa;padding:4px;text-align:center">${v.loi}</td><td style="border:1px solid #aaa;padding:4px;text-align:center">${pct.toFixed(1)}%</td></tr>`;
+  const groups = new Map();
+  rows.forEach(r=>{
+    const h = r[1];
+    if(!groups.has(h)) groups.set(h,{total:0,exist:0});
+    groups.get(h).total++;
+    // Kiểm tra tồn lỗi theo tick 1 cho các đơn vị chọn
+    let loiExist=false;
+    if(chkVTT && r.slice(3,6).some(v=>v===1 || v==='1')) loiExist=true;
+    if(chkVCC && r.slice(6,15).some(v=>v===1 || v==='1')) loiExist=true;
+    if(chkVCTL && r.slice(15,17).some(v=>v===1 || v==='1')) loiExist=true;
+    if(loiExist) groups.get(h).exist++;
+  });
+
+  let html='<table style="border-collapse:collapse;width:100%"><thead><tr>';
+  html+='<th style="border:1px solid #ccc">Huyện</th><th style="border:1px solid #ccc">Tổng số trạm</th><th style="border:1px solid #ccc">Số trạm tồn lỗi</th><th style="border:1px solid #ccc">% tồn lỗi</th>';
+  html+='</tr></thead><tbody>';
+  Array.from(groups.entries()).forEach(([h,v],idx)=>{
+    html+=`<tr class="${highlightClass(idx)}">`;
+    html+=`<td style="border:1px solid #ccc">${esc(h)}</td>`;
+    html+=`<td style="border:1px solid #ccc;text-align:center">${v.total}</td>`;
+    html+=`<td style="border:1px solid #ccc;text-align:center">${v.exist}</td>`;
+    const pct = v.total? Math.round(v.exist*100/v.total)+'%':'0%';
+    html+=`<td style="border:1px solid #ccc;text-align:center">${pct}</td>`;
+    html+='</tr>';
   });
   html+='</tbody></table>';
-  document.getElementById('errorSummaryArea').innerHTML=html;
+  document.getElementById('tableTongHop').innerHTML = html;
 }
 
 /* ================= INIT ================= */
-window.addEventListener('load', async ()=>{
-  await fetchErrorSheet();
-  createErrorDetailTab(); setupErrorDetail();
-  createErrorSummaryTab();
-  document.getElementById('btnErrorSummary').addEventListener('click', drawErrorSummary);
+window.addEventListener('load', ()=>{
+  setupChiTietLoi();
+  setupTongHopLoi();
 });
+</script>
 </body>
 </html>
