@@ -595,7 +595,7 @@ function showErrors(tram){
 </script>
   
 
-<!-- Thêm nút tab vào cùng hàng với các tab hiện tại -->
+<!-- Thêm tab lỗi chi tiết trực tiếp trong div.tabs cùng hàng với các tab khác -->
 <button class="tab-btn" data-tab="loiChiTiet">Lỗi chi tiết</button>
 
 <!-- Panel Lỗi chi tiết -->
@@ -611,9 +611,7 @@ function showErrors(tram){
 </div>
 
 <script>
-/* ================= Lỗi chi tiết ================= */
 async function setupLoiChiTietTab() {
-  // Đảm bảo errorData đã fetch
   if(!errorData || errorData.length===0){
     try{
       const res = await fetch(URL_ERROR);
@@ -630,7 +628,7 @@ async function setupLoiChiTietTab() {
   const box = document.getElementById('suggestionsLoiChiTiet');
   const table = document.getElementById('tableLoiChiTiet');
 
-  // Lấy header từ D1→U1 (index 3→20)
+  // Header lỗi D1→U1 (index 3→20)
   const errorHeader = errorData[0].slice(3,21);
 
   function hideSuggestions(){ box.style.display='none'; box.innerHTML=''; }
@@ -668,15 +666,20 @@ async function setupLoiChiTietTab() {
       return;
     }
 
-    let html = `<p>Lỗi: <b>${selectedHeader}</b></p><table><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead><tbody>`;
-    rows.forEach(r => {
+    // Lấy tiêu đề cột A,B,C từ dòng 1 của sheet error
+    const colHeader = errorData[0].slice(0,3);
+
+    let html = `<p>Lỗi: <b>${selectedHeader}</b></p><table><thead><tr>`;
+    colHeader.forEach(h=>html+=`<th>${esc(h||'')}</th>`);
+    html += `</tr></thead><tbody>`;
+    rows.forEach(r=>{
       html += `<tr><td>${esc(r[0]||'')}</td><td>${esc(r[1]||'')}</td><td>${esc(r[2]||'')}</td></tr>`;
     });
     html += '</tbody></table>';
     table.innerHTML = html;
   }
 
-  // Cập nhật tab show/hide panel
+  // Tab click show/hide panel
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -694,7 +697,6 @@ async function setupLoiChiTietTab() {
   function hideSuggestionsLoiChiTiet(){ box.style.display='none'; box.innerHTML=''; }
 }
 
-// Khởi tạo tab Lỗi chi tiết khi load
 window.addEventListener('load', setupLoiChiTietTab);
 </script>
 
