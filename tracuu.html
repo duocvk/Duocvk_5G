@@ -451,5 +451,131 @@ function toggleDetail(encKey, mode){
 /* ================= End ================= */
 </script>
 
+<!-- ========== TAB ERROR ========== -->
+<button class="tab-button" data-tab="error">Error</button>
+
+<div id="panel-error" class="tab-panel" style="display:none; padding-top:15px">
+
+  <div class="input-group">
+    <input id="inputError" type="text" placeholder="Nhập 3 số cuối (vd: 001, 112...)">
+    <button id="btnClearError" class="btn">X</button>
+  </div>
+
+  <div id="errorSuggestions" class="suggestions"></div>
+
+  <div id="table_error" style="margin-top:15px;"></div>
+
+</div>
+<!-- ========== END TAB ERROR ========== -->
+
+  <style>
+.suggestions{
+  background:#fff;
+  border:1px solid #ccc;
+  max-height:150px;
+  overflow-y:auto;
+  border-radius:6px;
+  margin-top:4px;
+}
+
+.suggest-item{
+  padding:6px 10px;
+  cursor:pointer;
+}
+
+.suggest-item:hover{
+  background:#eaeaea;
+}
+</style>
+
+<script>
+// ===============================
+// LẤY HEADER
+// ===============================
+function getErrorHeaderRow(){
+  if(errorData.length > 1){
+    const row2 = errorData[1];
+    const hasMeaning = row2.some(c => String(c || "").trim() !== "");
+    if(hasMeaning) return row2;
+  }
+  return errorData[0];
+}
+
+// ===============================
+// AUTOCOMPLETE ERROR
+// ===============================
+function updateErrorSuggestions(text) {
+  const sugDiv = document.getElementById('errorSuggestions');
+  if(!text.trim()) {
+    sugDiv.innerHTML = "";
+    return;
+  }
+
+  const rows = errorData.slice(1);
+  const filtered = rows.filter(r => String(r[0]).toLowerCase().includes(text.toLowerCase()));
+
+  let html = "";
+  filtered.forEach(r => {
+    html += `<div class="suggest-item" data-val="${esc(r[0])}">${esc(r[0])}</div>`;
+  });
+
+  sugDiv.innerHTML = html;
+
+  document.querySelectorAll('#errorSuggestions .suggest-item').forEach(it => {
+    it.addEventListener('click', () => {
+      const tram = it.dataset.val;
+      document.getElementById('inputError').value = "";
+      sugDiv.innerHTML = "";
+      filterErrorByTram(tram);
+    });
+  });
+}
+
+document.getElementById('inputError').addEventListener('input', e => {
+  updateErrorSuggestions(e.target.value);
+});
+
+document.getElementById('btnClearError').addEventListener('click', ()=>{
+  document.getElementById('inputError').value = "";
+  document.getElementById('errorSuggestions').innerHTML = "";
+});
+
+// ===============================
+// KIỂM TRA LỖI
+// ===============================
+function filterErrorByTram(tramCode){
+  const header = getErrorHeaderRow();
+  const rows = errorData.slice(1);
+  const output = document.getElementById('table_error');
+
+  const row = rows.find(r => String(r[0]).trim().toUpperCase() === tramCode.trim().toUpperCase());
+
+  if(!row){
+    output.innerHTML = `<p>Không tìm thấy trạm ${esc(tramCode)}</p>`;
+    return;
+  }
+
+  const errors = [];
+  for(let i=3;i<=20;i++){
+    const val = String(row[i] || "").trim().toUpperCase();
+    if(val === "E"){
+      errors.push(header[i]);
+    }
+  }
+
+  if(errors.length === 0){
+    output.innerHTML = `<p>Trạm ${esc(tramCode)} không tồn lỗi!</p>`;
+    return;
+  }
+
+  let html = `Trạm ${esc(tramCode)} tồn lỗi:<br><ul>`;
+  errors.forEach(e => html += `<li>${esc(e)}</li>`);
+  html += "</ul>";
+
+  output.innerHTML = html;
+}
+</script>
+  
+  
 </body>
 </html>
