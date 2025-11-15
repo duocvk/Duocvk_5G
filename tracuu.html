@@ -190,6 +190,32 @@ async function fetchGvizError() {
     alert('Không thể tải sheet lỗi. Kiểm tra quyền chia sẻ (Anyone with link → Viewer).');
   }
 }
+
+async function fetchGvizError() {
+  try {
+    const res = await fetch(URL_ERROR);
+    const text = await res.text();
+
+    // Parse GViz JSON (loại bỏ hàm callback)
+    const json = JSON.parse(
+      text.replace(/^[^\(]*\(/, '').replace(/\);\s*$/, '')
+    );
+
+    // Chuyển dữ liệu thành mảng 2 chiều
+    const raw = (json.table.rows || []).map(r => 
+      (r.c || []).map(c => 
+        c ? (c.v != null ? c.v : (c.f != null ? c.f : '')) : ''
+      )
+    );
+
+    errorData = raw; // lưu dữ liệu sheet error
+    console.log('Dữ liệu sheet error đã tải:', errorData);
+    
+  } catch(err) {
+    console.error('Lỗi tải sheet error:', err);
+    alert('Không thể tải sheet lỗi. Kiểm tra quyền chia sẻ (Anyone with link → Viewer).');
+  }
+}
   
 /* ================= Login logic ================= */
 /* New credentials: user = 'Qnm', pass = '123456' (no hint shown on popup) */
@@ -231,27 +257,34 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.getElementById('suggestionsLoiTram').style.display='none';
   });
 });
-  function drawLoiTramRows(tram){
+
+function drawLoiTramRows(tram){
   const tableDiv = document.getElementById('table_loi_tram');
   tableDiv.innerHTML = '';
 
-  // Tìm dòng trạm trong sheet error (cột A)
+  if(!errorData || errorData.length === 0){
+    tableDiv.innerHTML = `<p>Chưa có dữ liệu lỗi.</p>`;
+    return;
+  }
+
+  // Tìm dòng trạm
   const rowIndex = errorData.findIndex(r => r[0] === tram);
   if(rowIndex === -1){
     tableDiv.innerHTML = `<p>Trạm ${tram} không tồn tại trong sheet lỗi.</p>`;
     return;
   }
 
-  const row = errorData[rowIndex];
-  const header = errorData[0]; // header sheet
-  const loiCols = Array.from({length:16}, (_,i)=>i+3); // D=3 → Q=18
+  const row = errorData[rowIndex]; // dòng trạm
+  const header = errorData[0];     // header sheet
+  const loiCols = Array.from({length:16}, (_,i)=>i+3); // D→Q (index 3→18)
   const loiHienTai = [];
 
   loiCols.forEach(i => {
     const cell = row[i];
-    // Kiểm tra mọi dạng 1: số 1, string '1', string '1.0', boolean true
-    if(cell === 1 || cell === '1' || cell === '1.0' || cell === true){
-      const loiName = errorData[1][i] || header[i]; // lấy header, fallback nếu rỗng
+    // Kiểm tra tất cả dạng "1" hoặc true
+    if(cell !== undefined && ['1','1.0','1.00','true','TRUE'].includes(String(cell).trim())){
+      // Hiển thị giá trị ô thực tế của trạm (row[i]) thay vì header
+      const loiName = row[i] !== undefined ? String(row[i]) : `(Lỗi cột ${i+1})`;
       loiHienTai.push(loiName);
     }
   });
@@ -265,6 +298,8 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     tableDiv.innerHTML = html;
   }
 }
+
+  
   function setupLoiTramAutocomplete(){
   const input = document.getElementById('inputLoiTram');
   const box = document.getElementById('suggestionsLoiTram');
