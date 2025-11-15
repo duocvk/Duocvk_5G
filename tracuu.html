@@ -244,12 +244,14 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 
   const row = errorData[rowIndex];
   const header = errorData[0]; // header sheet
-  const loiCols = Array.from({length:16}, (_,i)=>i+3); // cột D→Q = index 3→18
+  const loiCols = Array.from({length:16}, (_,i)=>i+3); // D=3 → Q=18
   const loiHienTai = [];
 
   loiCols.forEach(i => {
-    if(row[i] === 1 || row[i] === '1'){       // nếu ô có lỗi
-      const loiName = header[i] || `Lỗi cột ${i+1}`; // lấy header
+    const cell = row[i];
+    // Kiểm tra mọi dạng 1: số 1, string '1', string '1.0', boolean true
+    if(cell === 1 || cell === '1' || cell === '1.0' || cell === true){
+      const loiName = header[i] || `(Lỗi cột ${i+1})`; // lấy header, fallback nếu rỗng
       loiHienTai.push(loiName);
     }
   });
