@@ -451,31 +451,34 @@ function toggleDetail(encKey, mode){
 /* ================= End ================= */
 </script>
 
-<!-- Thêm tab Error -->
+<!-- ================= Tab Error (bổ sung tìm trạm + list lỗi) ================= -->
 <script>
-/* ================= Thêm tab Error ================= */
-const errorTabBtn2 = document.createElement('button');
-errorTabBtn2.className = 'tab-btn';
-errorTabBtn2.dataset.tab = 'error';
-errorTabBtn2.textContent = 'Error';
-document.querySelector('.tabs').appendChild(errorTabBtn2);
+const errorTabBtn = document.createElement('button');
+errorTabBtn.className = 'tab-btn';
+errorTabBtn.dataset.tab = 'error';
+errorTabBtn.textContent = 'Error';
+document.querySelector('.tabs').appendChild(errorTabBtn);
 
-const panelError2 = document.createElement('div');
-panelError2.id = 'panel-error';
-panelError2.style.display = 'none';
-panelError2.style.marginTop = '12px';
-panelError2.innerHTML = `
+const panelError = document.createElement('div');
+panelError.id = 'panel-error';
+panelError.style.display = 'none';
+panelError.style.marginTop = '12px';
+panelError.innerHTML = `
   <div class="controls">
+    <div style="position:relative">
+      <input id="inputError" type="text" placeholder="Nhập mã trạm cần kiểm tra lỗi">
+      <div id="suggestionsError" style="display:none; position:absolute; top:38px; left:0; background:#fff; border:1px solid #e8f4ff; border-radius:8px; max-height:260px; overflow:auto; width:300px; z-index:60"></div>
+    </div>
     <button id="resetError" class="btn ghost">Reset</button>
   </div>
-  <div id="table_error"></div>
+  <div id="errorResult" style="margin-top:12px"></div>
 `;
-document.querySelector('.card').appendChild(panelError2);
+document.querySelector('.card').appendChild(panelError);
 
 /* ================= Bật tab Error ================= */
-errorTabBtn2.addEventListener('click', async ()=>{
+errorTabBtn.addEventListener('click', async ()=>{
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  errorTabBtn2.classList.add('active');
+  errorTabBtn.classList.add('active');
   document.getElementById('panel-chung').style.display = 'none';
   document.getElementById('panel-calloff').style.display = 'none';
   document.getElementById('panel-tong').style.display = 'none';
@@ -483,10 +486,10 @@ errorTabBtn2.addEventListener('click', async ()=>{
   hideSuggestions();
   hideSuggestionsCalloff();
   await loadErrorSheet();
-  drawErrorRows();
+  document.getElementById('errorResult').innerHTML = '';
 });
 
-/* ================= Load dữ liệu sheet Error ================= */
+/* ================= Load sheet Error ================= */
 let errorData = [];
 const URL_ERROR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=error`;
 
@@ -501,32 +504,64 @@ async function loadErrorSheet(){
   }
 }
 
-/* ================= Vẽ bảng Error ================= */
-function drawErrorRows(){
-  if(!errorData || errorData.length < 2) return;
-  const header = errorData[0] || [];
-  const rows = errorData.slice(1);
-  let html = '<table><thead><tr>';
-  for(let i=0;i<header.length;i++){
-    html += `<th>${esc(header[i]||'')}</th>`;
-  }
-  html += '</tr></thead><tbody>';
+/* ================= Tìm trạm trong sheet Error ================= */
+const inputError = document.getElementById('inputError');
+const boxError = document.getElementById('suggestionsError');
 
-  rows.forEach(r=>{
-    html += '<tr style="background:#ffe6e6">';
-    for(let i=0;i<header.length;i++){
-      html += `<td>${esc(r[i]===undefined?'':r[i])}</td>`;
-    }
-    html += '</tr>';
+inputError.addEventListener('input', (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  boxError.innerHTML = '';
+  if(!q){ boxError.style.display='none'; return; }
+
+  const found = new Set();
+  for(let i=1;i<errorData.length;i++){
+    const r = errorData[i];
+    const tram = r[0]; // giả sử cột A là mã trạm
+    if(tram && String(tram).toLowerCase().includes(q)) found.add(tram);
+    if(found.size>=30) break;
+  }
+
+  Array.from(found).forEach(tram=>{
+    const d = document.createElement('div');
+    d.textContent = tram;
+    d.onclick = ()=>{
+      inputError.value = '';
+      boxError.innerHTML = '';
+      boxError.style.display = 'none';
+      showErrors(tram);
+    };
+    boxError.appendChild(d);
   });
 
-  html += '</tbody></table>';
-  document.getElementById('table_error').innerHTML = html;
+  boxError.style.display = found.size ? 'block' : 'none';
+});
+
+/* ================= Hiển thị lỗi ================= */
+function showErrors(tram){
+  if(!errorData || errorData.length < 2) return;
+  const rows = errorData.slice(1).filter(r => String(r[0]||'') === tram);
+  const result = document.getElementById('errorResult');
+  if(!rows.length){
+    result.innerHTML = `<div>Trạm ${tram} không tồn lỗi nào!</div>`;
+    return;
+  }
+
+  let html = '<ul>';
+  rows.forEach((r,i)=>{
+    for(let j=1;j<r.length;j++){
+      if(r[j]!==undefined && r[j]!=='') html += `<li>Dòng ${i+1} lỗi ở cột ${String.fromCharCode(65+j)}: ${esc(r[j])}</li>`;
+    }
+  });
+  html += '</ul>';
+  result.innerHTML = html;
 }
 
-/* ================= Reset bảng Error ================= */
+/* ================= Reset ================= */
 document.getElementById('resetError').addEventListener('click', ()=>{
-  drawErrorRows();
+  inputError.value = '';
+  document.getElementById('errorResult').innerHTML = '';
+  boxError.innerHTML = '';
+  boxError.style.display = 'none';
 });
 </script>
   
