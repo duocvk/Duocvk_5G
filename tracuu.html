@@ -178,18 +178,7 @@ async function fetchGviz(url){
   return [header, ...dataRows];
 }
 
-async function fetchGvizError() {
-  try {
-    const res = await fetch(URL_ERROR);
-    const text = await res.text();
-    const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
-    const raw = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
-    errorData = raw; // lưu dữ liệu sheet error
-  } catch(err) {
-    console.error('Lỗi tải sheet error:', err);
-    alert('Không thể tải sheet lỗi. Kiểm tra quyền chia sẻ (Anyone with link → Viewer).');
-  }
-}
+
 
 async function fetchGvizError() {
   try {
