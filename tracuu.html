@@ -236,25 +236,29 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   tableDiv.innerHTML = '';
 
   // Tìm dòng trạm trong sheet error (cột A)
-  const row = errorData.slice(1).find(r => r[0] === tram);
-  if(!row){
+  const rowIndex = errorData.findIndex(r => r[0] === tram);
+  if(rowIndex === -1){
     tableDiv.innerHTML = `<p>Trạm ${tram} không tồn tại trong sheet lỗi.</p>`;
     return;
   }
 
+  const row = errorData[rowIndex];
   const header = errorData[0]; // header sheet
   const loiCols = Array.from({length:16}, (_,i)=>i+3); // cột D→Q = index 3→18
   const loiHienTai = [];
 
-  loiCols.forEach(i=>{
-    if(row[i] === 1 || row[i] === '1') loiHienTai.push(header[i] || `Lỗi cột ${i+1}`);
+  loiCols.forEach(i => {
+    if(row[i] === 1 || row[i] === '1'){       // nếu ô có lỗi
+      const loiName = header[i] || `Lỗi cột ${i+1}`; // lấy header
+      loiHienTai.push(loiName);
+    }
   });
 
   if(loiHienTai.length === 0){
     tableDiv.innerHTML = `<p>Trạm ${tram} không tồn lỗi nào.</p>`;
   } else {
     let html = `<p>Các lỗi tồn của ${tram} là:</p><ul>`;
-    loiHienTai.forEach(l => { html += `<li>${l}</li>`; });
+    loiHienTai.forEach(l => html += `<li>${l}</li>`);
     html += `</ul>`;
     tableDiv.innerHTML = html;
   }
