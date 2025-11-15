@@ -251,7 +251,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     const cell = row[i];
     // Kiểm tra mọi dạng 1: số 1, string '1', string '1.0', boolean true
     if(cell === 1 || cell === '1' || cell === '1.0' || cell === true){
-      const loiName = errorData[1][i] || `(Lỗi cột ${i+1})`; // lấy header, fallback nếu rỗng
+      const loiName = errorData[1][i] || header[i]; // lấy header, fallback nếu rỗng
       loiHienTai.push(loiName);
     }
   });
