@@ -679,7 +679,7 @@ async function setupLoiChiTietTab() {
     });
 
     const entries = Array.from(summaryMap.entries());
-    let sumHtml = `<p style="font-weight:bold;">Lỗi: <b>${selectedHeader}</b></p>`;
+    let sumHtml = `<p style="font-weight:bold;">Lỗi: <b>${selectedHeader}</b> : ${rows.length}</p>`;
     sumHtml += '<table style="border-collapse:collapse;width:auto;margin-bottom:8px;"><thead><tr style="background:#ffcdcb;color:#000;font-weight:bold;">';
     sumHtml += '<th style="padding:4px 6px;border:1px solid #999">Huyện</th><th style="padding:4px 6px;border:1px solid #999">Số lỗi</th>';
     if(entries.length>3){ sumHtml += '<th style="padding:4px 6px;border:1px solid #999">Huyện</th><th style="padding:4px 6px;border:1px solid #999">Số lỗi</th>'; }
