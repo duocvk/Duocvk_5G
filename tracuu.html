@@ -179,29 +179,25 @@ async function fetchGviz(url){
 }
 
 
+let errorData = []; // lưu dữ liệu sheet error
 
 async function fetchGvizError() {
   try {
     const res = await fetch(URL_ERROR);
     const text = await res.text();
 
-    // Parse GViz JSON (loại bỏ hàm callback)
-    const json = JSON.parse(
-      text.replace(/^[^\(]*\(/, '').replace(/\);\s*$/, '')
-    );
+    // Parse GViz JSON (loại bỏ callback)
+    const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
 
     // Chuyển dữ liệu thành mảng 2 chiều
-    const raw = (json.table.rows || []).map(r => 
-      (r.c || []).map(c => 
-        c ? (c.v != null ? c.v : (c.f != null ? c.f : '')) : ''
-      )
+    errorData = (json.table.rows || []).map(r =>
+      (r.c || []).map(c => c ? (c.v != null ? c.v : (c.f != null ? c.f : '')) : '')
     );
 
-    errorData = raw; // lưu dữ liệu sheet error
-    console.log('Dữ liệu sheet error đã tải:', errorData);
+    console.log('Dữ liệu sheet lỗi đã tải:', errorData);
     
   } catch(err) {
-    console.error('Lỗi tải sheet error:', err);
+    console.error('Lỗi tải sheet lỗi:', err);
     alert('Không thể tải sheet lỗi. Kiểm tra quyền chia sẻ (Anyone with link → Viewer).');
   }
 }
@@ -247,7 +243,8 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   });
 });
 
-function drawLoiTramRows(tram){
+
+  function drawLoiTramRows(tram){
   const tableDiv = document.getElementById('table_loi_tram');
   tableDiv.innerHTML = '';
 
@@ -263,17 +260,18 @@ function drawLoiTramRows(tram){
     return;
   }
 
-  const row = errorData[rowIndex]; // dòng trạm
-  const header = errorData[0];     // header sheet
-  const loiCols = Array.from({length:16}, (_,i)=>i+3); // D→Q (index 3→18)
+  const row = errorData[rowIndex];      // dòng dữ liệu trạm
+  const header = errorData[0];          // lấy header = tên lỗi
+  const loiCols = Array.from({length:16}, (_,i)=>i+3); // cột D→Q (index 3→18)
   const loiHienTai = [];
 
   loiCols.forEach(i => {
     const cell = row[i];
-    // Kiểm tra tất cả dạng "1" hoặc true
-    if(cell !== undefined && ['1','1.0','1.00','true','TRUE'].includes(String(cell).trim())){
-      // Hiển thị giá trị ô thực tế của trạm (row[i]) thay vì header
-      const loiName = row[i] !== undefined ? String(row[i]) : `(Lỗi cột ${i+1})`;
+
+    // Kiểm tra giá trị đánh dấu lỗi
+    if(cell !== undefined && ['1','1.0','1.00',1,true,'TRUE','true'].includes(String(cell).trim())){
+      // Hiển thị tên lỗi từ header[i], fallback cột nếu header rỗng
+      const loiName = header[i] || `(Lỗi cột ${i+1})`;
       loiHienTai.push(loiName);
     }
   });
