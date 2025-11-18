@@ -665,7 +665,7 @@ async function setupLoiChiTietTab() {
     if(idx === -1){ table.innerHTML='Không tìm thấy lỗi'; return; }
 
     const rows = errorData.slice(1).filter(r => r[idx] && String(r[idx]).toLowerCase() === 'e');
-
+rows.sort((a,b) => ((a[1]||'').toLowerCase()).localeCompare((b[1]||'').toLowerCase()));
     if(rows.length===0){
       table.innerHTML = `<p>Lỗi: <b>${selectedHeader}</b></p>Không có trạm nào bị lỗi này`;
       return;
