@@ -784,14 +784,32 @@ window.addEventListener('load', async () => {
   cardContainer.appendChild(panel);
 
   // Click tab
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+//  btn.addEventListener('click', () => {
+//    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+ //   btn.classList.add('active');
     // Ẩn tất cả panel khác
-    document.querySelectorAll('#panel-chung,#panel-calloff,#panel-tong,#panel-error,#panel-loiChiTiet,#panel-lapdat').forEach(p => p.style.display = 'none');
-    panel.style.display = 'block';
-  });
+ //   document.querySelectorAll('#panel-chung,#panel-calloff,#panel-tong,#panel-error,#panel-loiChiTiet,#panel-lapdat').forEach(p => p.style.display = 'none');
+ //   panel.style.display = 'block';
+ // });
 
+//BẮT ĐẦU ĐOẠN CODE SỬA
+  
+// Click tab Lắp đặt
+btn.addEventListener('click', () => {
+  // Active tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Ẩn tất cả panel khác, kể cả panel Lắp đặt
+  const allPanels = document.querySelectorAll('#panel-chung,#panel-calloff,#panel-tong,#panel-error,#panel-loiChiTiet,#panel-lapdat');
+  allPanels.forEach(p => p.style.display = 'none');
+
+  // Hiện panel Lắp đặt
+  panel.style.display = 'block';
+});
+
+ // KẾT THÚC ĐOẠN SỬA CODE ẨN PANEL
+  
   // Load dữ liệu từ sheet lapdat
   const SHEET_LAPDAT = 'lapdat';
   let lapdatData = [];
