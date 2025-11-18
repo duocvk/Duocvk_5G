@@ -737,179 +737,128 @@ window.addEventListener('load', setupLoiChiTietTab);
 
 
 
-<!-- Thêm nút tab Lắp đặt vào container tab hiện tại -->
+<!-- Thêm Tab Lắp đặt -->
+<button class="tab-btn" data-tab="lapdat">Lắp đặt</button>
+
+<!-- Panel Lắp đặt -->
+<div id="panel-lapdat" style="margin-top:12px;display:none">
+  <div class="controls" style="flex-wrap:wrap;gap:8px">
+    <select id="filterHuyenCum"><option value="huyen">Huyện</option><option value="cum">Cụm</option></select>
+    <select id="filterDoiTac"><option value="all">Tất cả</option><option value="VCTL">VCTL</option><option value="VCC">VCC</option></select>
+    <select id="filterLapDat"><option value="all">Tất cả</option><option value="1">Đã lắp</option><option value="0">Chưa lắp</option></select>
+    <select id="filterTichHop"><option value="all">Tất cả</option><option value="1">Đã tích hợp</option><option value="0">Chưa tích hợp</option></select>
+    <button id="btnResetLapDat" class="btn ghost">Reset</button>
+  </div>
+  <div id="tableLapDat" style="margin-top:12px"></div>
+</div>
+
+<!-- Modal chi tiết -->
+<div id="modalLapDat" class="modal-backdrop" style="display:none;align-items:flex-start;padding-top:50px">
+  <div class="modal" style="max-height:80vh;overflow:auto;width:600px;position:relative">
+    <button id="closeModalLapDat" class="btn ghost" style="position:absolute;top:8px;right:8px;z-index:10">Đóng</button>
+    <div id="modalContentLapDat" style="margin-top:36px"></div>
+  </div>
+</div>
+
 <script>
-window.addEventListener('load', ()=>{
-  const tabContainer = document.querySelector('.tabs');
-  if(tabContainer){
-    const btn = document.createElement('button');
-    btn.className = 'tab-btn';
-    btn.setAttribute('data-tab','lapdatTab');
-    btn.textContent = 'Lắp đặt';
-    tabContainer.appendChild(btn);
+async function setupLapDatTab(){
+  // Load sheet lapdat
+  const URL_LAPDAT = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=lapdat`;
+  let lapdatData = [];
+  try{
+    const res = await fetch(URL_LAPDAT);
+    const text = await res.text();
+    const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
+    lapdatData = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
+  } catch(err){ console.error('Lỗi tải sheet lapdat', err); return; }
 
-    // Tạo panel Lắp đặt
-    const container = document.querySelector('.container .card');
-    const panel = document.createElement('div');
-    panel.id = 'panel-lapdatTab';
-    panel.style.display = 'none';
-    panel.style.marginTop = '12px';
-    panel.innerHTML = `
-      <div class="controls">
-        <select id="filterLoai" style="min-width:160px;">
-          <option value="huyen">Huyện</option>
-          <option value="cum">Cụm</option>
-        </select>
-        <select id="filterDoiTac" style="min-width:160px;">
-          <option value="all">Tất cả đối tác</option>
-          <option value="VCTL">VCTL</option>
-          <option value="VCC">VCC</option>
-        </select>
-        <button id="btnRefreshLapdat" class="btn">Lọc</button>
-      </div>
-      <div id="lapdatSummary" style="margin-top:12px;"></div>
-      <div id="lapdatDetailPopup" style="display:none; position:fixed; top:50px; left:50%; transform:translateX(-50%); background:#fff; border:1px solid #ccc; border-radius:12px; width:90%; max-width:1000px; max-height:80%; overflow:auto; z-index:9999; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-        <div style="position:sticky; top:0; background:#eee; padding:8px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ccc;">
-          <span style="font-weight:600;">Chi tiết</span>
-          <button id="btnCloseLapdatDetail" class="btn ghost" style="padding:4px 8px;">Đóng</button>
-        </div>
-        <div id="lapdatDetailContent" style="padding:10px;"></div>
-      </div>
-    `;
-    container.appendChild(panel);
+  const panel = document.getElementById('panel-lapdat');
+  const tableDiv = document.getElementById('tableLapDat');
+  const modal = document.getElementById('modalLapDat');
+  const modalContent = document.getElementById('modalContentLapDat');
 
-    // Tab click show/hide panel
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-chung').style.display='none';
-      document.getElementById('panel-calloff').style.display='none';
-      document.getElementById('panel-tong').style.display='none';
-      document.getElementById('panel-error').style.display='none';
-      document.getElementById('panel-loiChiTiet').style.display='none';
-      document.getElementById('panel-lapdatTab').style.display='block';
+  const filterHuyenCum = document.getElementById('filterHuyenCum');
+  const filterDoiTac = document.getElementById('filterDoiTac');
+  const filterLapDat = document.getElementById('filterLapDat');
+  const filterTichHop = document.getElementById('filterTichHop');
+  const btnReset = document.getElementById('btnResetLapDat');
+  const btnCloseModal = document.getElementById('closeModalLapDat');
+
+  function isOne(v){ return v===1 || v==='1' || v===true; }
+
+  function renderTable(){
+    let rows = lapdatData.slice(1); // skip header
+
+    // Lọc theo dropdown
+    if(filterDoiTac.value!=='all') rows = rows.filter(r => (r[6]||'').toUpperCase()===filterDoiTac.value);
+    if(filterLapDat.value!=='all') rows = rows.filter(r => isOne(r[4])=== (filterLapDat.value==='1'));
+    if(filterTichHop.value!=='all') rows = rows.filter(r => isOne(r[5])=== (filterTichHop.value==='1'));
+
+    const groupCol = filterHuyenCum.value==='huyen'?0:1; // cột A hoặc B
+    const groups = new Map();
+    rows.forEach(r=>{
+      const key = r[groupCol]||'(Không xác định)';
+      if(!groups.has(key)) groups.set(key,{total:0,lap:0,tich:0,rows:[]});
+      const g = groups.get(key);
+      g.total++; g.lap += isOne(r[4])?1:0; g.tich += isOne(r[5])?1:0; g.rows.push(r);
     });
 
-    document.getElementById('btnCloseLapdatDetail').addEventListener('click', ()=>{
-      document.getElementById('lapdatDetailPopup').style.display='none';
-    });
+    // Tạo bảng HTML
+    let html = '<table style="border-collapse:collapse;width:100%">';
+    html += '<thead><tr style="background:#ddeeff;font-weight:bold">';
+    html += '<th style="border:1px solid #999;padding:4px">STT</th>';
+    html += `<th style="border:1px solid #999;padding:4px">${filterHuyenCum.value==='huyen'?'Huyện':'Cụm'}</th>`;
+    html += '<th style="border:1px solid #999;padding:4px">Tổng trạm</th>';
+    html += '<th style="border:1px solid #999;padding:4px">Đã lắp</th>';
+    html += '<th style="border:1px solid #999;padding:4px">Đã tích hợp</th>';
+    html += '<th style="border:1px solid #999;padding:4px">Chi tiết</th>';
+    html += '</tr></thead><tbody>';
 
-    // Fetch sheet lapdat
-    const URL_LAPDAT = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=lapdat`;
-    let lapdatData = [];
+    let idx = 1;
+    let totalAll={total:0,lap:0,tich:0};
+    for(const [key,v] of Array.from(groups.entries()).sort((a,b)=>a[0].localeCompare(b[0]))){
+      totalAll.total += v.total; totalAll.lap+=v.lap; totalAll.tich+=v.tich;
+      // Dòng tổng ngay dưới tiêu đề
+      html += `<tr style="background:#eef;text-align:center;font-weight:bold">
+        <td>-</td><td>Tổng ${esc(key)}</td><td>${v.total}</td><td>${v.lap}</td><td>${v.tich}</td><td></td>
+      </tr>`;
 
-    async function fetchLapdat(){
-      try{
-        const res = await fetch(URL_LAPDAT);
-        const text = await res.text();
-        const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
-        lapdatData = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
-      } catch(err){ console.error('Lỗi fetch lapdat', err);}
+      html += `<tr style="text-align:center">`;
+      html += `<td>${idx++}</td><td>${esc(key)}</td><td>${v.total}</td><td>${v.lap}</td><td>${v.tich}</td>`;
+      html += `<td><button class="btn" onclick="showModalLapDat(${JSON.stringify(v.rows)})">Xem</button></td></tr>`;
     }
 
-    async function renderLapdat(){
-      if(!lapdatData || lapdatData.length===0) await fetchLapdat();
-      if(!lapdatData || lapdatData.length===0) return;
-      const header = lapdatData[0]; // A-G
-      const rows = lapdatData.slice(1);
-
-      const filterLoai = document.getElementById('filterLoai').value;
-      const filterDoiTac = document.getElementById('filterDoiTac').value;
-
-      let filtered = rows.slice();
-
-      if(filterDoiTac !== 'all'){
-        filtered = filtered.filter(r => r[6]===filterDoiTac);
-      }
-
-      const groupCol = filterLoai==='huyen'?0:1; // Huyện=A=0, Cụm=B=1
-      const groups = new Map();
-      filtered.forEach(r=>{
-        const key = r[groupCol]||'(Không xác định)';
-        if(!groups.has(key)) groups.set(key,{total:0,lap:0,tich:0,rows:[]});
-        const g = groups.get(key);
-        g.total++;
-        g.lap += (r[4]==1?1:0);
-        g.tich += (r[5]==1?1:0);
-        g.rows.push(r);
-      });
-
-      // Tổng tất cả
-      let totalAll=0, totalLap=0, totalTich=0;
-      for(let g of groups.values()){
-        totalAll+=g.total; totalLap+=g.lap; totalTich+=g.tich;
-      }
-
-      let html = '<table style="border-collapse:collapse;width:100%;"><thead><tr style="background:#0a66c2;color:#fff;">';
-      html += '<th style="border:1px solid #ccc;padding:6px;">STT</th>';
-      html += `<th style="border:1px solid #ccc;padding:6px;">${filterLoai==='huyen'?'Huyện':'Cụm'}</th>`;
-      html += '<th style="border:1px solid #ccc;padding:6px;">Tổng số trạm</th>';
-      html += '<th style="border:1px solid #ccc;padding:6px;">Đã lắp đặt</th>';
-      html += '<th style="border:1px solid #ccc;padding:6px;">Đã tích hợp</th>';
-      html += '<th style="border:1px solid #ccc;padding:6px;">Chi tiết</th>';
-      html += '</tr></thead><tbody>';
-
-      // Dòng tổng
-      html += `<tr style="background:#f2f2f2;font-weight:600;">`;
-      html += `<td style="border:1px solid #ccc;padding:6px;" colspan="2">Tổng</td>`;
-      html += `<td style="border:1px solid #ccc;padding:6px;text-align:center">${totalAll}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:6px;text-align:center">${totalLap}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:6px;text-align:center">${totalTich}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:6px;"></td>`;
-      html += '</tr>';
-
-      let idx=0;
-      Array.from(groups.entries()).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([k,v])=>{
-        idx++;
-        html += `<tr>`;
-        html += `<td style="border:1px solid #ccc;padding:6px;text-align:center">${idx}</td>`;
-        html += `<td style="border:1px solid #ccc;padding:6px;">${k}</td>`;
-        html += `<td style="border:1px solid #ccc;padding:6px;text-align:center">${v.total}</td>`;
-        html += `<td style="border:1px solid #ccc;padding:6px;text-align:center">${v.lap}</td>`;
-        html += `<td style="border:1px solid #ccc;padding:6px;text-align:center">${v.tich}</td>`;
-        html += `<td style="border:1px solid #ccc;padding:6px;text-align:center;"><button class="btn" onclick="showLapdatDetail('${encodeURIComponent(k)}','${filterLoai}','${filterDoiTac}')">Xem</button></td>`;
-        html += `</tr>`;
-      });
-
-      html += '</tbody></table>';
-      document.getElementById('lapdatSummary').innerHTML = html;
-    }
-
-    document.getElementById('btnRefreshLapdat').addEventListener('click', renderLapdat);
-
-    // Hàm popup chi tiết
-    window.showLapdatDetail = function(key,loai,doiTac){
-      key = decodeURIComponent(key);
-      const rows = lapdatData.slice(1).filter(r=>{
-        const groupCol = loai==='huyen'?0:1;
-        const matchLoai = (r[groupCol]||'')===key;
-        const matchDoiTac = (doiTac==='all'?true:(r[6]===doiTac));
-        return matchLoai && matchDoiTac;
-      });
-
-      let html = '<table style="border-collapse:collapse;width:100%;"><thead><tr style="background:#0a66c2;color:#fff;">';
-      lapdatData[0].forEach(h=>{
-        html += `<th style="border:1px solid #ccc;padding:6px;">${h}</th>`;
-      });
-      html += '</tr></thead><tbody>';
-      rows.forEach(r=>{
-        html += '<tr>';
-        r.forEach(c=>{
-          html += `<td style="border:1px solid #ccc;padding:6px;">${c===undefined?'':c}</td>`;
-        });
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-
-      document.getElementById('lapdatDetailContent').innerHTML = html;
-      document.getElementById('lapdatDetailPopup').style.display='block';
-      document.getElementById('lapdatDetailPopup').scrollTop=0;
-    }
-
-    // Lọc lần đầu
-    renderLapdat();
+    html += '</tbody></table>';
+    tableDiv.innerHTML = html;
   }
-});
+
+  window.showModalLapDat = function(rows){
+    let html = '<table style="border-collapse:collapse;width:100%">';
+    html += '<thead><tr style="background:#ffeedd;font-weight:bold">';
+    ['Huyện','Cụm','Trạm','Ghi chú','Lắp đặt','Tích hợp','Đối tác'].forEach(h=> html+=`<th style="border:1px solid #999;padding:4px">${h}</th>`);
+    html += '</tr></thead><tbody>';
+    rows.forEach(r=>{
+      html += `<tr style="background:${isOne(r[4])?'#fff6a3':isOne(r[5])?'#d1eaff':'#fff'};text-align:center">`;
+      for(let i=0;i<7;i++) html += `<td style="border:1px solid #999;padding:3px">${esc(r[i]||'')}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    modalContent.innerHTML = html;
+    modal.style.display='flex';
+  }
+
+  btnCloseModal.onclick = ()=>{ modal.style.display='none'; modalContent.innerHTML=''; }
+  [filterHuyenCum,filterDoiTac,filterLapDat,filterTichHop].forEach(el=>el.onchange=renderTable);
+  btnReset.onclick=()=>{
+    filterHuyenCum.value='huyen'; filterDoiTac.value='all'; filterLapDat.value='all'; filterTichHop.value='all';
+    renderTable();
+  };
+
+  renderTable();
+}
+
+// Chạy khi load
+window.addEventListener('load', setupLapDatTab);
 </script>
   
 </body>
