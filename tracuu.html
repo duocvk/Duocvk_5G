@@ -737,97 +737,118 @@ window.addEventListener('load', setupLoiChiTietTab);
 
 
 
-// ------------------ TAB LẮP ĐẶT TỰ ĐỘNG ------------------
-(async function(){
-  const sheetName = 'lapdat';
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
-  if(!sheet){ console.error('Sheet lapdat không tồn tại'); return; }
-  
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const rows = data.slice(1);
+<!-- Thêm nút tab Lắp đặt -->
+<script>
+window.addEventListener('load', async ()=>{
 
-  // Tạo div tab và panel nếu chưa có
-  if(!document.getElementById('btnLapdat')){
-    const tabBtn = document.createElement('button');
-    tabBtn.id = 'btnLapdat';
-    tabBtn.className = 'tab-btn';
-    tabBtn.dataset.tab = 'lapdat';
-    tabBtn.innerText = 'Lắp đặt';
-    document.querySelector('.tabs')?.appendChild(tabBtn);
+  // --- 1. Fetch dữ liệu sheet lapdat ---
+  const URL_LAPDAT = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=lapdat`;
+  let lapdatData = [];
+  async function fetchLapDatSheet(){
+    try{
+      const res = await fetch(URL_LAPDAT);
+      const text = await res.text();
+      const json = JSON.parse(text.replace(/^[^\(]*\(/,'').replace(/\);\s*$/,''));
+      lapdatData = (json.table.rows || []).map(r => (r.c || []).map(c => c ? c.v : ''));
+    }catch(err){ console.error('Lỗi tải sheet lapdat', err); }
   }
+  await fetchLapDatSheet();
 
-  if(!document.getElementById('panel-lapdat')){
+  // --- 2. Thêm nút tab ---
+  const tabContainer = document.querySelector('.tabs');
+  if(tabContainer){
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn';
+    btn.setAttribute('data-tab','lapdatTab');
+    btn.textContent = 'Lắp đặt';
+    tabContainer.appendChild(btn);
+
+    // --- 3. Thêm panel ---
+    const container = document.querySelector('.container .card');
     const panel = document.createElement('div');
-    panel.id = 'panel-lapdat';
-    panel.style.display='none';
-    panel.style.marginTop='12px';
+    panel.id = 'panel-lapdatTab';
+    panel.style.display = 'none';
+    panel.style.marginTop = '12px';
     panel.innerHTML = `
       <div class="controls">
-        <select id="filterHuyenCum"><option value="">Tất cả Huyện/Cụm</option></select>
-        <select id="filterDoiTac"><option value="">Tất cả Đối tác</option></select>
-        <select id="filterLapDat"><option value="">Tất cả</option><option value="1">Đã lắp</option><option value="0">Chưa lắp</option></select>
-        <select id="filterTichHop"><option value="">Tất cả</option><option value="1">Đã tích hợp</option><option value="0">Chưa tích hợp</option></select>
+        <select id="selHuyenCum">
+          <option value="huyen">Chọn Huyện</option>
+          <option value="cum">Chọn Cụm</option>
+        </select>
+        <select id="selDoiTac">
+          <option value="all">Tất cả Đối tác</option>
+          <option value="VCTL">VCTL</option>
+          <option value="VCC">VCC</option>
+        </select>
         <button id="resetLapDat" class="btn ghost">Reset</button>
       </div>
-      <div id="lapdatTable" style="margin-top:12px"></div>
+      <div id="tableLapDat" style="margin-top:12px"></div>
     `;
-    document.body.appendChild(panel);
-  }
+    container.appendChild(panel);
 
-  const filterHuyenCum = document.getElementById('filterHuyenCum');
-  const filterDoiTac = document.getElementById('filterDoiTac');
-  const filterLapDat = document.getElementById('filterLapDat');
-  const filterTichHop = document.getElementById('filterTichHop');
-  const tableDiv = document.getElementById('lapdatTable');
+    // --- 4. Click tab hiển thị panel ---
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
 
-  // điền Huyện/Cụm và Đối tác
-  const huyenCumSet = new Set();
-  const doiTacSet = new Set();
-  rows.forEach(r=>{ huyenCumSet.add(r[0]||r[1]); doiTacSet.add(r[6]); });
-  filterHuyenCum.innerHTML += Array.from(huyenCumSet).sort().map(v=>`<option value="${v}">${v}</option>`).join('');
-  filterDoiTac.innerHTML += Array.from(doiTacSet).sort().map(v=>`<option value="${v}">${v}</option>`).join('');
+      // ẩn các panel khác
+      document.getElementById('panel-chung').style.display = 'none';
+      document.getElementById('panel-calloff').style.display = 'none';
+      document.getElementById('panel-tong').style.display = 'none';
+      document.getElementById('panel-error').style.display = 'none';
+      document.getElementById('panel-loiChiTiet').style.display = 'none';
+      document.getElementById('panel-lapdatTab').style.display = 'block';
 
-  function render(){
-    let displayRows = [...rows];
-
-    const hc = filterHuyenCum.value; if(hc) displayRows = displayRows.filter(r=>r[0]===hc||r[1]===hc);
-    const dt = filterDoiTac.value; if(dt) displayRows = displayRows.filter(r=>r[6]===dt);
-    const ld = filterLapDat.value; if(ld==='1') displayRows=displayRows.filter(r=>r[4]==='1'); if(ld==='0') displayRows=displayRows.filter(r=>r[4]!=='1');
-    const th = filterTichHop.value; if(th==='1') displayRows=displayRows.filter(r=>r[5]==='1'); if(th==='0') displayRows=displayRows.filter(r=>r[5]!=='1');
-
-    displayRows.sort((a,b)=>(a[0]||'').localeCompare(b[0]||''));
-
-    let html = '<table><thead><tr>';
-    ['Huyện','Cụm','Trạm','Ghi chú','Lắp đặt','Tích hợp','Đối tác'].forEach(h=>html+=`<th>${h}</th>`);
-    html+='</tr></thead><tbody>';
-    displayRows.forEach(r=>{
-      html+='<tr>';
-      html+=`<td>${r[0]||''}</td><td>${r[1]||''}</td><td>${r[2]||''}</td><td>${r[3]||''}</td>`;
-      html+=`<td style="text-align:center">${r[4]==='1'?'✅':'❌'}</td>`;
-      html+=`<td style="text-align:center">${r[5]==='1'?'✅':'❌'}</td>`;
-      html+=`<td>${r[6]||''}</td>`;
-      html+='</tr>';
+      renderLapDat();
     });
-    html+='</tbody></table>';
-    tableDiv.innerHTML = html;
-  }
 
-  [filterHuyenCum, filterDoiTac, filterLapDat, filterTichHop].forEach(f=>f.addEventListener('change', render));
-  document.getElementById('resetLapDat').addEventListener('click', ()=>{
-    filterHuyenCum.value=''; filterDoiTac.value=''; filterLapDat.value=''; filterTichHop.value='';
-    render();
-  });
+    // --- 5. Event filter ---
+    document.getElementById('selHuyenCum').addEventListener('change', renderLapDat);
+    document.getElementById('selDoiTac').addEventListener('change', renderLapDat);
+    document.getElementById('resetLapDat').addEventListener('click', ()=>{
+      document.getElementById('selHuyenCum').value = 'huyen';
+      document.getElementById('selDoiTac').value = 'all';
+      renderLapDat();
+    });
 
-  render();
+    // --- 6. Render bảng ---
+    function renderLapDat(){
+      if(!lapdatData || lapdatData.length<2) return;
+      const header = lapdatData[0];
+      const rows = lapdatData.slice(1);
 
-  // tab click show panel
-  document.getElementById('btnLapdat').addEventListener('click', ()=>{ 
-    document.getElementById('panel-lapdat').style.display='block'; 
-  });
+      const sortBy = document.getElementById('selHuyenCum').value; // 'huyen' hoặc 'cum'
+      const colSort = sortBy==='cum' ? 1 : 0; // cột A=0, B=1
+      const doiTac = document.getElementById('selDoiTac').value; // 'all','VCTL','VCC'
 
-})();
+      let filtered = rows;
+      if(doiTac !== 'all') filtered = filtered.filter(r => (r[6]||'').toUpperCase() === doiTac);
+
+      // sort
+      filtered.sort((a,b)=>{
+        const v1 = (a[colSort]||'').toString().toLowerCase();
+        const v2 = (b[colSort]||'').toString().toLowerCase();
+        return v1.localeCompare(v2);
+      });
+
+      // vẽ bảng
+      let html = '<table><thead><tr>';
+      ['Huyện','Cụm','Trạm','Ghi chú','Lắp đặt','Tích hợp','Đối tác'].forEach(h=> html+=`<th>${h}</th>`);
+      html+='</tr></thead><tbody>';
+      filtered.forEach(r=>{
+        html+='<tr>';
+        for(let i=0;i<=6;i++){
+          html+=`<td>${r[i]!==undefined?r[i]:''}</td>`;
+        }
+        html+='</tr>';
+      });
+      html+='</tbody></table>';
+      document.getElementById('tableLapDat').innerHTML = html;
+    }
+
+  } // end if tabContainer
+});
+</script>
 
   
 </body>
