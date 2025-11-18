@@ -735,6 +735,126 @@ rows.sort((a,b) => ((a[1]||'').toLowerCase()).localeCompare((b[1]||'').toLowerCa
 window.addEventListener('load', setupLoiChiTietTab);
 </script>
 
+
+
+  // --- Tab tổng hợp Lắp đặt ---
+const lapdatFilterData = []; // sẽ chứa dữ liệu lapdat từ sheet
+
+async function fetchLapdatData() {
+  try {
+    lapdatFilterData.length = 0;
+    const data = await fetchGviz(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=lapdat`);
+    data.slice(1).forEach(r => lapdatFilterData.push(r)); // copy dữ liệu
+  } catch(err){ console.error('Lỗi tải sheet lapdat', err); }
+}
+
+window.addEventListener('load', async ()=>{
+  await fetchLapdatData();
+
+  const tabContainer = document.querySelector('.tabs');
+  const btnLapdatSum = document.createElement('button');
+  btnLapdatSum.className = 'tab-btn';
+  btnLapdatSum.setAttribute('data-tab','lapdatSum');
+  btnLapdatSum.textContent = 'Lắp đặt Tổng hợp';
+  tabContainer.appendChild(btnLapdatSum);
+
+  const container = document.querySelector('.container .card');
+  const panel = document.createElement('div');
+  panel.id = 'panel-lapdatSum';
+  panel.style.display = 'none';
+  panel.style.marginTop = '12px';
+  panel.innerHTML = `
+    <div class="filters" style="display:flex;gap:8px;flex-wrap:wrap">
+      <select id="filterHuyen"><option value="all">Chọn Huyện/Cụm</option></select>
+      <select id="filterVt"><option value="all">Chọn VCTL/VCC</option></select>
+      <select id="filterLapdat"><option value="all">Lắp đặt</option>
+        <option value="1">Đã lắp đặt</option>
+        <option value="0">Chưa lắp đặt</option>
+      </select>
+      <select id="filterTichhop"><option value="all">Tích hợp</option>
+        <option value="1">Đã tích hợp</option>
+        <option value="0">Chưa tích hợp</option>
+      </select>
+    </div>
+    <div id="tableLapdatSum" style="margin-top:12px"></div>
+  `;
+  container.appendChild(panel);
+
+  // Nút tab click
+  btnLapdatSum.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btnLapdatSum.classList.add('active');
+
+    // Ẩn các panel khác
+    document.querySelectorAll('.container .card > div').forEach(d=>{
+      if(d.id !== 'panel-lapdatSum') d.style.display='none';
+    });
+    panel.style.display='block';
+
+    populateFilters();
+    drawLapdatSum(lapdatFilterData);
+  });
+
+  const selHuyen = document.getElementById('filterHuyen');
+  const selVt = document.getElementById('filterVt');
+  const selLapdat = document.getElementById('filterLapdat');
+  const selTichhop = document.getElementById('filterTichhop');
+  const tableDiv = document.getElementById('tableLapdatSum');
+
+  function populateFilters(){
+    // Huyện/Cụm
+    const huyenSet = new Set();
+    const cumSet = new Set();
+    lapdatFilterData.forEach(r=>{
+      if(r[0]) huyenSet.add(r[0]);
+      if(r[1]) cumSet.add(r[1]);
+    });
+    selHuyen.innerHTML = `<option value="all">Chọn Huyện/Cụm</option>`;
+    Array.from(huyenSet).sort().forEach(h=> selHuyen.innerHTML += `<option value="${h}">${h}</option>`);
+    Array.from(cumSet).sort().forEach(c=> selHuyen.innerHTML += `<option value="${c}">${c}</option>`);
+
+    // VCTL/VCC (cột G)
+    const vtSet = new Set();
+    lapdatFilterData.forEach(r=>{
+      if(r[6]) vtSet.add(r[6]);
+    });
+    selVt.innerHTML = `<option value="all">Chọn VCTL/VCC</option>`;
+    Array.from(vtSet).sort().forEach(v=> selVt.innerHTML += `<option value="${v}">${v}</option>`);
+  }
+
+  function drawLapdatSum(data){
+    const rows = data.filter(r=>{
+      // Filter Huyện/Cụm
+      const fHuyen = selHuyen.value==='all' || r[0]===selHuyen.value || r[1]===selHuyen.value;
+      // Filter VCTL/VCC
+      const fVt = selVt.value==='all' || r[6]===selVt.value;
+      // Filter lắp đặt
+      const fLap = selLapdat.value==='all' || ((selLapdat.value==='1'?1:0) == Number(r[4]||0));
+      // Filter tích hợp
+      const fTich = selTichhop.value==='all' || ((selTichhop.value==='1'?1:0) == Number(r[5]||0));
+      return fHuyen && fVt && fLap && fTich;
+    });
+
+    rows.sort((a,b)=> String(a[0]||'').localeCompare(String(b[0]||''))); // sort theo huyện
+
+    let html = `<table>
+      <thead><tr>
+      <th>Huyện</th><th>Cụm</th><th>Trạm</th><th>Ghi chú</th><th>Lắp đặt</th><th>Tích hợp</th><th>Đối tác</th>
+      </tr></thead><tbody>`;
+    rows.forEach(r=>{
+      html += '<tr>';
+      for(let i=0;i<7;i++) html += `<td>${esc(r[i]||'')}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    tableDiv.innerHTML = html;
+  }
+
+  [selHuyen, selVt, selLapdat, selTichhop].forEach(sel=>{
+    sel.addEventListener('change', ()=> drawLapdatSum(lapdatFilterData));
+  });
+});
+
   
 </body>
 </html>
