@@ -992,19 +992,18 @@ html += `<tr style="font-weight:bold;background:#ffd">
 
 <!-- ======================= TAB TỒN – TỰ THÊM ======================= -->
 <script>
-// Tạo nút tab mới
-const tonTabBtn = document.createElement("button");
-tonTabBtn.className = "tab-btn";
-tonTabBtn.dataset.tab = "ton";
-tonTabBtn.innerText = "Tồn";
-
-// Thêm vào cuối .tabs
+// Thêm nút tab Tồn vào cuối thanh tabs
 document.addEventListener("DOMContentLoaded", () => {
-    document.querySelector(".tabs").appendChild(tonTabBtn);
+    const tonBtn = document.createElement("button");
+    tonBtn.className = "tab-btn";
+    tonBtn.dataset.tab = "ton";
+    tonBtn.innerText = "Tồn";
+
+    document.querySelector(".tabs").appendChild(tonBtn);
 });
 </script>
 
-<!-- ====================== PANEL TỒN – KHỐI HIỂN THỊ ====================== -->
+<!-- ====================== PANEL TỒN ====================== -->
 <div id="panel-ton" style="margin-top:12px;display:none">
   <h3>Tổng hợp TỒN theo Cấp VT</h3>
   <table id="tonTable" border="1" cellpadding="6" 
@@ -1023,39 +1022,43 @@ document.addEventListener("DOMContentLoaded", () => {
   </table>
 </div>
 
-<!-- ======================= SCRIPT TAB TỒN – TỰ HOẠT ĐỘNG ======================= -->
+
+<!-- ======================= SCRIPT TAB TỒN ======================= -->
 <script>
-function showTonPanel() {
-    // Ẩn tất cả các panel khác (không cần biết id)
-    document.querySelectorAll("[id^='panel-']").forEach(p => p.style.display = "none");
 
-    // Hiện panel Tồn
-    document.getElementById("panel-ton").style.display = "block";
-
-    // Gọi load dữ liệu
-    loadTonData();
+// ----------- ẨN TẤT CẢ PANEL KHI ĐỔI TAB -------------
+function hideAllPanels() {
+    document.querySelectorAll("div[id^='panel-']").forEach(p => {
+        p.style.display = "none";
+    });
 }
 
-// Bắt sự kiện click riêng tab Tồn
-document.addEventListener("click", function(e){
+// ----------- BẮT SỰ KIỆN CLICK TAB TỒN -------------
+document.addEventListener("click", function(e) {
+
+    // Nếu click vào tab Tồn
     if (e.target.matches(".tab-btn[data-tab='ton']")) {
-        showTonPanel();
+
+        hideAllPanels();     // ẩn panel tab cũ
+        loadTonData();       // load dữ liệu
+        document.getElementById("panel-ton").style.display = "block";
     }
 });
 
-// ==================== HÀM TÍNH TỒN TỪ sheetData ====================
+
+// ----------- HÀM TÍNH TOÁN TỒN TỪ sheetData -------------
 function loadTonData() {
     if (!window.sheetData || window.sheetData.length === 0) {
-        console.warn("Chưa có dữ liệu sheetData!");
+        console.warn("Không có sheetData");
         return;
     }
 
     const totals = {};
 
-    window.sheetData.forEach(row => {
-        const capVT = row[3] || "";  // Cột D
-        const lapdat = row[5] || ""; // Cột F
-        const tinhop = row[6] || ""; // Cột G
+    window.sheetData.forEach(r => {
+        const capVT  = r[3] || "";  // cột D
+        const lapdat = r[5] || "";  // cột F
+        const tinhop = r[6] || "";  // cột G
 
         if (!totals[capVT]) {
             totals[capVT] = {
@@ -1063,33 +1066,40 @@ function loadTonData() {
                 daLap: 0,
                 chuaLap: 0,
                 daTH: 0,
-                chuaTH: 0
+                chuaTH: 0,
             };
         }
 
         totals[capVT].total++;
-        if (lapdat == "1") totals[capVT].daLap++; else totals[capVT].chuaLap++;
-        if (tinhop == "1") totals[capVT].daTH++; else totals[capVT].chuaTH++;
+
+        if (lapdat == "1") totals[capVT].daLap++;
+        else totals[capVT].chuaLap++;
+
+        if (tinhop == "1") totals[capVT].daTH++;
+        else totals[capVT].chuaTH++;
     });
 
-    // Render bảng
+    // ---- đổ dữ liệu ra bảng ----
     const tbody = document.querySelector("#tonTable tbody");
     tbody.innerHTML = "";
 
-    Object.keys(totals).forEach(k => {
-        const t = totals[k];
+    Object.keys(totals).forEach(key => {
+        const t = totals[key];
         const tr = document.createElement("tr");
+
         tr.innerHTML = `
-            <td>${k}</td>
+            <td>${key}</td>
             <td>${t.total}</td>
             <td>${t.daLap}</td>
             <td>${t.chuaLap}</td>
             <td>${t.daTH}</td>
             <td>${t.chuaTH}</td>
         `;
+
         tbody.appendChild(tr);
     });
 }
+
 </script>
   
   
