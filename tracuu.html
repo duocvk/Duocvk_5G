@@ -737,38 +737,52 @@ window.addEventListener('load', setupLoiChiTietTab);
 
 
 
-<!-- Thêm nút tab Lắp đặt -->
 <script>
-window.addEventListener('load', async ()=>{
+window.addEventListener('load', async ()=> {
   const tabContainer = document.querySelector('.tabs');
   const cardContainer = document.querySelector('.container .card');
   if(!tabContainer || !cardContainer) return;
 
-  // Thêm nút
+  // Thêm nút tab
   const btn = document.createElement('button');
   btn.className = 'tab-btn';
   btn.setAttribute('data-tab','lapdat');
   btn.textContent = 'Lắp đặt';
   tabContainer.appendChild(btn);
 
-  // Thêm panel
+  // Thêm panel tab Lắp đặt
   const panel = document.createElement('div');
   panel.id = 'panel-lapdat';
   panel.style.display = 'none';
   panel.style.marginTop = '12px';
   panel.innerHTML = `
     <div class="controls">
-      <select id="filterHuyenCum"><option value="huyen">Chọn Huyện</option><option value="cum">Chọn Cụm</option></select>
-      <select id="filterDoiTac"><option value="all">Tất cả</option><option value="VCTL">VCTL</option><option value="VCC">VCC</option></select>
-      <select id="filterLapDat"><option value="all">Tất cả</option><option value="1">Đã lắp đặt</option><option value="0">Chưa lắp đặt</option></select>
-      <select id="filterTichHop"><option value="all">Tất cả</option><option value="1">Đã tích hợp</option><option value="0">Chưa tích hợp</option></select>
+      <select id="filterHuyenCum">
+        <option value="huyen">Chọn Huyện</option>
+        <option value="cum">Chọn Cụm</option>
+      </select>
+      <select id="filterDoiTac">
+        <option value="all">Tất cả</option>
+        <option value="VCTL">VCTL</option>
+        <option value="VCC">VCC</option>
+      </select>
+      <select id="filterLapDat">
+        <option value="all">Tất cả</option>
+        <option value="1">Đã lắp đặt</option>
+        <option value="0">Chưa lắp đặt</option>
+      </select>
+      <select id="filterTichHop">
+        <option value="all">Tất cả</option>
+        <option value="1">Đã tích hợp</option>
+        <option value="0">Chưa tích hợp</option>
+      </select>
       <button id="resetLapDat" class="btn ghost">Reset</button>
     </div>
     <div id="tableLapDat" style="margin-top:12px"></div>
   `;
   cardContainer.appendChild(panel);
 
-  // Tab click
+  // Click tab
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
@@ -787,7 +801,6 @@ window.addEventListener('load', async ()=>{
     lapdatData = (json.table.rows||[]).map(r => (r.c||[]).map(c => c ? c.v : ''));
   }catch(err){ console.error('Lỗi load sheet lapdat',err); return; }
 
-  // Hiển thị bảng
   const tableDiv = document.getElementById('tableLapDat');
   const filterHuyenCum = document.getElementById('filterHuyenCum');
   const filterDoiTac = document.getElementById('filterDoiTac');
@@ -800,15 +813,17 @@ window.addEventListener('load', async ()=>{
     const header = lapdatData[0];
     let rows = lapdatData.slice(1);
 
-    // Lọc
+    // Filter
     const dt = filterDoiTac.value;
     if(dt!=='all') rows = rows.filter(r => String(r[6]||'').toUpperCase() === dt);
-    const ld = filterLapDat.value;
-    if(ld!=='all') rows = rows.filter(r => String(r[4]||'') === ld);
-    const th = filterTichHop.value;
-    if(th!=='all') rows = rows.filter(r => String(r[5]||'') === th);
 
-    // Nhóm
+    const ld = filterLapDat.value;
+    if(ld!=='all') rows = rows.filter(r => (r[4]==='1'? '1' : '0') === ld);
+
+    const th = filterTichHop.value;
+    if(th!=='all') rows = rows.filter(r => (r[5]==='1'? '1' : '0') === th);
+
+    // Nhóm theo Huyện/Cụm
     const groupCol = filterHuyenCum.value==='huyen'?0:1;
     const groups = new Map();
     rows.forEach(r=>{
@@ -816,13 +831,20 @@ window.addEventListener('load', async ()=>{
       if(!groups.has(key)) groups.set(key, {total:0,lap:0,tich:0,rows:[]});
       const g = groups.get(key);
       g.total++;
-      if(String(r[4])==='1') g.lap++;
-      if(String(r[5])==='1') g.tich++;
+      g.lap += r[4]==='1'?1:0;
+      g.tich += r[5]==='1'?1:0;
       g.rows.push(r);
     });
 
     const keys = Array.from(groups.keys()).sort((a,b)=>a.localeCompare(b));
-    let html = '<table class="summary-table"><thead><tr><th>STT</th><th>' + (groupCol===0?'Huyện':'Cụm') + '</th><th>Tổng số trạm</th><th>Đã lắp</th><th>Đã tích hợp</th><th>Chi tiết</th></tr></thead><tbody>';
+    let html = '<table class="summary-table" style="border-collapse:collapse;width:100%"><thead><tr>'+
+               '<th style="border:1px solid #999;padding:4px">STT</th>'+
+               `<th style="border:1px solid #999;padding:4px">${groupCol===0?'Huyện':'Cụm'}</th>`+
+               '<th style="border:1px solid #999;padding:4px">Tổng số trạm</th>'+
+               '<th style="border:1px solid #999;padding:4px">Đã lắp</th>'+
+               '<th style="border:1px solid #999;padding:4px">Đã tích hợp</th>'+
+               '<th style="border:1px solid #999;padding:4px">Chi tiết</th></tr></thead><tbody>';
+
     // Tổng
     let totalAll=0, lapAll=0, tichAll=0;
     keys.forEach(k=>{ const g = groups.get(k); totalAll+=g.total; lapAll+=g.lap; tichAll+=g.tich; });
@@ -831,8 +853,18 @@ window.addEventListener('load', async ()=>{
     // Các dòng
     keys.forEach((k,i)=>{
       const g = groups.get(k);
-      html += `<tr><td style="text-align:center">${i+1}</td><td>${k}</td><td style="text-align:center">${g.total}</td><td style="text-align:center">${g.lap}</td><td style="text-align:center">${g.tich}</td><td style="text-align:center"><button class="btn" onclick="showModalLapDat('${groupCol}','${k}')">Xem</button></td></tr>`;
+      html += `<tr>
+        <td style="border:1px solid #999;padding:3px;text-align:center">${i+1}</td>
+        <td style="border:1px solid #999;padding:3px">${k}</td>
+        <td style="border:1px solid #999;padding:3px;text-align:center">${g.total}</td>
+        <td style="border:1px solid #999;padding:3px;text-align:center">${g.lap}</td>
+        <td style="border:1px solid #999;padding:3px;text-align:center">${g.tich}</td>
+        <td style="border:1px solid #999;padding:3px;text-align:center">
+          <button class="btn" onclick="showModalLapDat('${groupCol}','${k}')">Xem</button>
+        </td>
+      </tr>`;
     });
+
     html += '</tbody></table>';
     tableDiv.innerHTML = html;
   }
@@ -846,30 +878,54 @@ window.addEventListener('load', async ()=>{
 
   renderTable();
 
-  // Modal hiển thị chi tiết
+  // Modal chi tiết, chỉ hiển thị dữ liệu đã lọc
   window.showModalLapDat = function(groupCol, key){
     const gkey = key==='(Không xác định)'?'':key;
-    const rows = lapdatData.slice(1).filter(r=>{
-      const matchCol = r[groupCol]||''; 
-      return matchCol===gkey;
+    const dt = filterDoiTac.value;
+    const ld = filterLapDat.value;
+    const th = filterTichHop.value;
+    let rows = lapdatData.slice(1).filter(r=>{
+      // filter Huyện/Cụm
+      if((r[groupCol]||'')!==gkey) return false;
+      // filter Đối tác
+      if(dt!=='all' && String(r[6]||'').toUpperCase()!==dt) return false;
+      // filter Lắp đặt
+      if(ld!=='all' && ((r[4]==='1'?'1':'0')!==ld)) return false;
+      // filter Tích hợp
+      if(th!=='all' && ((r[5]==='1'?'1':'0')!==th)) return false;
+      return true;
     });
+
     let html = `<table style="width:100%;border-collapse:collapse;"><thead><tr>`;
-    lapdatData[0].forEach(h=>html+=`<th style="border:1px solid #999;padding:4px">${h||''}</th>`); html+='</tr></thead><tbody>';
+    lapdatData[0].forEach(h=>html+=`<th style="border:1px solid #999;padding:4px">${h||''}</th>`);
+    html+='</tr></thead><tbody>';
     rows.forEach(r=>{
       html+='<tr>';
       r.forEach(c=>html+=`<td style="border:1px solid #999;padding:3px">${c||''}</td>`);
       html+='</tr>';
     });
     html+='</tbody></table>';
+
     const modal = document.createElement('div');
     modal.className='modal-backdrop';
-    modal.innerHTML = `<div class="modal" style="width:80%;max-height:80%;overflow:auto">
-      <h3>Chi tiết ${groupCol==='0'?'Huyện':'Cụm'}: ${key}</h3>
-      <div style="margin-bottom:12px;overflow:auto">${html}</div>
-      <div style="text-align:right"><button class="btn" onclick="this.closest('.modal-backdrop').remove()">Đóng</button></div>
-    </div>`;
+    modal.style.position='fixed';
+    modal.style.top=0;
+    modal.style.left=0;
+    modal.style.width='100%';
+    modal.style.height='100%';
+    modal.style.background='rgba(0,0,0,0.4)';
+    modal.style.overflow='auto';
+    modal.style.zIndex=9999;
+    modal.innerHTML = `
+      <div class="modal" style="background:#fff;width:80%;max-height:80%;margin:20px auto;padding:12px;overflow:auto;position:relative;">
+        <button style="position:absolute;top:8px;right:8px" class="btn" onclick="this.closest('.modal-backdrop').remove()">Đóng</button>
+        <h3>Chi tiết ${groupCol==='0'?'Huyện':'Cụm'}: ${key}</h3>
+        <div style="margin-top:32px">${html}</div>
+      </div>
+    `;
     document.body.appendChild(modal);
   }
+
 });
 </script>
 
