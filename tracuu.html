@@ -880,15 +880,34 @@ btn.addEventListener('click', () => {
     html += '</tr></thead><tbody>';
 
     // Tổng
-    let totalAll = 0, lapAll = 0, tichAll = 0;
-    keys.forEach(k => {
-      const g = groups.get(k);
-      totalAll += g.total;
-      lapAll += g.lap;
-      tichAll += g.tich;
-    });
-    html += `<tr style="font-weight:bold;background:#ffd"><td></td><td>Tổng</td><td style="text-align:center;border:1px solid #999">${totalAll}</td><td style="text-align:center;border:1px solid #999">${lapAll}</td><td style="text-align:center;border:1px solid #999">${tichAll}</td><td></td></tr>`;
+   // let totalAll = 0, lapAll = 0, tichAll = 0;
+   // keys.forEach(k => {
+   //   const g = groups.get(k);
+   //   totalAll += g.total;
+    //  lapAll += g.lap;
+    //  tichAll += g.tich;
+   // });
+   // html += `<tr style="font-weight:bold;background:#ffd"><td></td><td>Tổng</td><td style="text-align:center;border:1px solid #999">${totalAll}</td><td style="text-align:center;border:1px solid #999">${lapAll}</td><td style="text-align:center;border:1px solid #999">${tichAll}</td><td></td></tr>`;
+let totalAll = 0, lapAll = 0, tichAll = 0;
+keys.forEach(k => {
+  const g = groups.get(k);
+  totalAll += g.total;
+  lapAll += g.lap;
+  tichAll += g.tich;
+});
+html += `<tr style="font-weight:bold;background:#ffd">
+  <td></td>
+  <td>Tổng</td>
+  <td style="text-align:center;border:1px solid #999">${totalAll}</td>
+  <td style="text-align:center;border:1px solid #999">${lapAll}</td>
+  <td style="text-align:center;border:1px solid #999">${tichAll}</td>
+  <td style="text-align:center;border:1px solid #999">
+    <button class="btn" onclick="showModalLapDat('all','Tổng')">Xem</button>
+  </td>
+</tr>`;
 
+
+    
     // Các dòng dữ liệu
     keys.forEach((k, i) => {
       const g = groups.get(k);
@@ -927,13 +946,25 @@ btn.addEventListener('click', () => {
     const th = filterTichHop.value;
 
     rows = rows.filter(r => {
-      const matchCol = r[groupCol] || '';
-      const condHuyenCum = matchCol === gkey;
-      const condDT = dt === 'all' || String(r[6] || '').toUpperCase() === dt;
-      const condLD = ld === 'all' || (String(r[4] || '') === '1' && ld === '1') || (String(r[4] || '') !== '1' && ld === '0');
-      const condTH = th === 'all' || (String(r[5] || '') === '1' && th === '1') || (String(r[5] || '') !== '1' && th === '0');
-      return condHuyenCum && condDT && condLD && condTH;
-    });
+  const condDT = dt === 'all' || String(r[6] || '').toUpperCase() === dt;
+  const condLD = ld === 'all' || (String(r[4] || '') === '1' && ld === '1') || (String(r[4] || '') !== '1' && ld === '0');
+  const condTH = th === 'all' || (String(r[5] || '') === '1' && th === '1') || (String(r[5] || '') !== '1' && th === '0');
+
+  if(groupCol === 'all') return condDT && condLD && condTH; // tổng tất cả
+  const matchCol = r[groupCol] || '';
+  const gkey = key === '(Không xác định)' ? '' : key;
+  const condHuyenCum = matchCol === gkey;
+  return condHuyenCum && condDT && condLD && condTH;
+});
+
+   // rows = rows.filter(r => {
+   //   const matchCol = r[groupCol] || '';
+   //   const condHuyenCum = matchCol === gkey;
+   //   const condDT = dt === 'all' || String(r[6] || '').toUpperCase() === dt;
+   //   const condLD = ld === 'all' || (String(r[4] || '') === '1' && ld === '1') || (String(r[4] || '') !== '1' && ld === '0');
+  //    const condTH = th === 'all' || (String(r[5] || '') === '1' && th === '1') || (String(r[5] || '') !== '1' && th === '0');
+  //    return condHuyenCum && condDT && condLD && condTH;
+  //  });
 
     let html = `<table style="width:100%;border-collapse:collapse"><thead><tr>`;
     lapdatData[0].forEach(h => html += `<th style="border:1px solid #999;padding:4px">${h || ''}</th>`);
