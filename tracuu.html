@@ -990,76 +990,7 @@ html += `<tr style="font-weight:bold;background:#ffd">
 </script>
 
 
-<!-- ======================= TAB TỒN ======================= -->
-<button class="tab-btn" data-tab="ton">Tồn</button>
 
-<div id="panel-ton" style="margin-top:12px; display:none">
-  <h3>Tổng hợp TỒN theo Cấp VT</h3>
-  <table id="tonTable" border="1" cellpadding="6" style="border-collapse:collapse; width:100%; margin-top:10px;">
-    <thead>
-      <tr style="background:#f2f2f2">
-        <th>Cấp VT</th>
-        <th>Tổng số trạm</th>
-        <th>Đã lắp đặt</th>
-        <th>Chưa lắp đặt</th>
-        <th>Đã tích hợp</th>
-        <th>Chưa tích hợp</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-<script>
-// Ẩn tất cả panel
-function hideAllPanels() {
-  document.querySelectorAll("div[id^='panel-']").forEach(p => p.style.display = "none");
-}
-
-// Click tab
-document.addEventListener("click", e => {
-  if(e.target.matches(".tab-btn[data-tab='ton']")) {
-    hideAllPanels();
-    document.getElementById("panel-ton").style.display = "block";
-    loadTonData();
-  }
-});
-
-// Load dữ liệu Tồn từ sheetData
-function loadTonData() {
-  const tbody = document.querySelector("#tonTable tbody");
-  tbody.innerHTML = "";
-  if(!window.sheetData || !window.sheetData.length) return;
-
-  const totals = {};
-
-  window.sheetData.forEach(row => {
-    const capVT = row[3] || "";      // cột D
-    const lapdat = row[5] || "";     // cột F
-    const tinhop = row[6] || "";     // cột G
-
-    if(!totals[capVT]) totals[capVT] = {total:0, daLap:0, chuaLap:0, daTH:0, chuaTH:0};
-
-    totals[capVT].total++;
-    if(lapdat=="1") totals[capVT].daLap++; else totals[capVT].chuaLap++;
-    if(tinhop=="1") totals[capVT].daTH++; else totals[capVT].chuaTH++;
-  });
-
-  Object.keys(totals).forEach(k => {
-    const t = totals[k];
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${k}</td>
-      <td>${t.total}</td>
-      <td>${t.daLap}</td>
-      <td>${t.chuaLap}</td>
-      <td>${t.daTH}</td>
-      <td>${t.chuaTH}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-</script>
   
   
 </body>
